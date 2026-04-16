@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-04-16
+
+### Changed
+
+- **Internal refactor:** parser, env manager, script runner, and request runner extracted into the standalone [`ivkjs`](https://github.com/doossee/ivkjs) npm package. No user-visible behavior change.
+- Added `ObsidianTransport` — a thin wrapper around `requestUrl()` implementing the `ivkjs` `HttpTransport` interface.
+
+### Removed
+
+- `src/parser/`, `src/env/`, `src/runner/` — moved to `ivkjs`. Plugin consumes them via `import from 'ivkjs'`.
+
+[0.2.0]: https://github.com/doossee/obsidian-invoker/releases/tag/0.2.0
+
 ## [0.1.0] — 2026-04-16
 
 ### Added
