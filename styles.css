@@ -479,11 +479,22 @@
   width: 100%;
   min-height: inherit;
   resize: vertical;
-  background: transparent;
-  color: transparent;
+  background: transparent !important;
+  color: transparent !important;
   caret-color: var(--text-normal);
   z-index: 1;
   outline: none;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.ivk-editor-textarea:hover,
+.ivk-editor-textarea:focus,
+.ivk-editor-textarea:active {
+  background: transparent !important;
+  color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
 .ivk-editor-textarea::selection {
