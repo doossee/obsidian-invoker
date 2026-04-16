@@ -5,8 +5,15 @@ import { IvkEnvironment, InvokeSettings } from '../types';
 export class EnvManager {
   private runtimeVars: Record<string, string> = {};
   private collectionVars: Record<string, string> = {};
+  private saveCallback: (() => Promise<void>) | null = null;
+  private saveDebounceTimer: number | null = null;
 
   constructor(private getSettings: () => InvokeSettings) {}
+
+  /** Register a callback to persist settings (debounced) when env vars change. */
+  setSaveCallback(callback: () => Promise<void>): void {
+    this.saveCallback = callback;
+  }
 
   getActiveEnv(): IvkEnvironment | null {
     const settings = this.getSettings();
@@ -27,6 +34,17 @@ export class EnvManager {
     if (env) {
       env.variables[name] = value;
     }
+    // Debounce-save so rapid keystrokes don't hammer the disk
+    this.scheduleSave();
+  }
+
+  private scheduleSave(): void {
+    if (!this.saveCallback) return;
+    if (this.saveDebounceTimer) window.clearTimeout(this.saveDebounceTimer);
+    this.saveDebounceTimer = window.setTimeout(() => {
+      this.saveCallback?.();
+      this.saveDebounceTimer = null;
+    }, 300);
   }
 
   setCollectionVars(vars: Record<string, string>): void {

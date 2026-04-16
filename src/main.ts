@@ -17,6 +17,7 @@ export default class InvokerPlugin extends Plugin {
     await this.loadSettings();
 
     this.env = new EnvManager(() => this.settings);
+    this.env.setSaveCallback(() => this.saveSettings());
     this.runner = new RequestRunner(this.env);
 
     // Register .ivk file extension
