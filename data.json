@@ -1,0 +1,21 @@
+{
+  "environments": [
+    {
+      "name": "local",
+      "variables": {
+        "baseUrl": "http://localhost:8080",
+        "phone": "998941102208"
+      },
+      "color": "#22c55e"
+    },
+    {
+      "name": "stage",
+      "variables": {
+        "baseUrl": "https://test-api.ovi.uz",
+        "phone": "998941102208"
+      }
+    }
+  ],
+  "activeEnvironmentIndex": 0,
+  "timeout": 30000
+}

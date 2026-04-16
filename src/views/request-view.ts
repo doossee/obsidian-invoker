@@ -166,32 +166,20 @@ export class RequestView extends TextFileView {
 
   private renderBodyTab(): void {
     const wrapper = this.tabContent.createDiv({ cls: 'ivk-body-wrapper' });
-    const textarea = wrapper.createEl('textarea', {
-      cls: 'ivk-body-editor',
-      text: this.request!.body,
-      attr: { spellcheck: 'false', placeholder: 'Request body...' },
-    });
-    textarea.addEventListener('input', () => {
-      this.request!.body = textarea.value;
-      this.scheduleSave();
-      this.hideAutocomplete();
-    });
 
-    // Tab indentation
-    textarea.addEventListener('keydown', (e: KeyboardEvent) => {
-      if (e.key === 'Tab') {
-        e.preventDefault();
-        const start = textarea.selectionStart;
-        const end = textarea.selectionEnd;
-        textarea.value = textarea.value.substring(0, start) + '  ' + textarea.value.substring(end);
-        textarea.selectionStart = textarea.selectionEnd = start + 2;
-        this.request!.body = textarea.value;
+    const textarea = this.createHighlightedEditor(wrapper, {
+      value: this.request!.body,
+      language: 'json',
+      placeholder: 'Request body...',
+      onChange: (val) => {
+        this.request!.body = val;
         this.scheduleSave();
-      }
+        this.hideAutocomplete();
+      },
     });
 
     // Variable autocomplete on {{
-    textarea.addEventListener('keyup', (e: KeyboardEvent) => {
+    textarea.addEventListener('keyup', () => {
       this.handleAutocomplete(textarea, wrapper);
     });
 
@@ -204,10 +192,121 @@ export class RequestView extends TextFileView {
         textarea.value = formatted;
         this.request!.body = formatted;
         this.scheduleSave();
+        // Re-highlight
+        const highlight = textarea.parentElement?.querySelector('.ivk-highlight') as HTMLElement;
+        if (highlight) highlight.innerHTML = this.highlightCode(formatted, 'json');
       } catch {
         // Not valid JSON — ignore
       }
     });
+  }
+
+  private createHighlightedEditor(
+    parent: HTMLElement,
+    opts: { value: string; language: string; placeholder: string; onChange: (val: string) => void; cls?: string },
+  ): HTMLTextAreaElement {
+    const editorWrap = parent.createDiv({ cls: `ivk-editor-wrap ${opts.cls ?? ''}` });
+    const highlight = editorWrap.createEl('pre', { cls: 'ivk-highlight' });
+    highlight.innerHTML = this.highlightCode(opts.value, opts.language);
+
+    const textarea = editorWrap.createEl('textarea', {
+      cls: 'ivk-editor-textarea',
+      text: opts.value,
+      attr: { spellcheck: 'false', placeholder: opts.placeholder },
+    });
+
+    // Sync scroll
+    textarea.addEventListener('scroll', () => {
+      highlight.scrollTop = textarea.scrollTop;
+      highlight.scrollLeft = textarea.scrollLeft;
+    });
+
+    // Update highlight on input
+    textarea.addEventListener('input', () => {
+      highlight.innerHTML = this.highlightCode(textarea.value, opts.language);
+      opts.onChange(textarea.value);
+    });
+
+    // Tab indentation
+    textarea.addEventListener('keydown', (e: KeyboardEvent) => {
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        textarea.value = textarea.value.substring(0, start) + '  ' + textarea.value.substring(end);
+        textarea.selectionStart = textarea.selectionEnd = start + 2;
+        highlight.innerHTML = this.highlightCode(textarea.value, opts.language);
+        opts.onChange(textarea.value);
+      }
+    });
+
+    return textarea;
+  }
+
+  private highlightCode(code: string, language: string): string {
+    // Escape HTML first
+    let escaped = code
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+
+    // Highlight {{variables}} in all languages
+    escaped = escaped.replace(
+      /(\{\{[\w]+\}\})/g,
+      '<span class="ivk-hl-var">$1</span>',
+    );
+
+    if (language === 'json') {
+      // JSON keys
+      escaped = escaped.replace(
+        /(&quot;|")([\w\-\.]+)(&quot;|")(\s*:)/g,
+        '<span class="ivk-hl-key">$1$2$3</span>$4',
+      );
+      // JSON strings (after colon)
+      escaped = escaped.replace(
+        /(:\s*)(&quot;|")((?:(?!<span)(?!&quot;|").)*?)(&quot;|")/g,
+        '$1<span class="ivk-hl-str">$2$3$4</span>',
+      );
+      // Numbers
+      escaped = escaped.replace(
+        /:\s*(\d+\.?\d*)/g,
+        (match, num) => match.replace(num, `<span class="ivk-hl-num">${num}</span>`),
+      );
+      // Booleans + null
+      escaped = escaped.replace(
+        /\b(true|false|null)\b/g,
+        '<span class="ivk-hl-bool">$1</span>',
+      );
+    } else if (language === 'js') {
+      // Comments
+      escaped = escaped.replace(
+        /(\/\/.*$)/gm,
+        '<span class="ivk-hl-comment">$1</span>',
+      );
+      // Keywords
+      escaped = escaped.replace(
+        /\b(const|let|var|function|return|if|else|for|while|await|async|new|throw|try|catch)\b/g,
+        '<span class="ivk-hl-keyword">$1</span>',
+      );
+      // Strings
+      escaped = escaped.replace(
+        /("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`)/g,
+        '<span class="ivk-hl-str">$1</span>',
+      );
+      // Numbers
+      escaped = escaped.replace(
+        /\b(\d+\.?\d*)\b/g,
+        '<span class="ivk-hl-num">$1</span>',
+      );
+      // Method calls
+      escaped = escaped.replace(
+        /\b(ivk|res|expect|test)\b/g,
+        '<span class="ivk-hl-api">$1</span>',
+      );
+    }
+
+    // Trailing newline so caret positioning matches
+    return escaped + '\n';
   }
 
   private autocompleteEl: HTMLElement | null = null;
@@ -318,14 +417,15 @@ export class RequestView extends TextFileView {
     for (const type of ['pre', 'post', 'test'] as const) {
       const section = this.tabContent.createDiv({ cls: 'ivk-script-section' });
       section.createEl('label', { text: `> ${type}`, cls: 'ivk-script-label' });
-      const textarea = section.createEl('textarea', {
-        cls: 'ivk-script-editor',
-        text: this.request!.scripts[type],
-        attr: { spellcheck: 'false', placeholder: `// ${type}-request script...` },
-      });
-      textarea.addEventListener('input', () => {
-        this.request!.scripts[type] = textarea.value;
-        this.scheduleSave();
+      this.createHighlightedEditor(section, {
+        value: this.request!.scripts[type],
+        language: 'js',
+        placeholder: `// ${type}-request script...`,
+        cls: 'ivk-script-size',
+        onChange: (val) => {
+          this.request!.scripts[type] = val;
+          this.scheduleSave();
+        },
       });
     }
   }

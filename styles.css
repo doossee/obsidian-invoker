@@ -130,20 +130,7 @@
   margin-top: 4px;
 }
 
-/* ── Body editor ── */
-.ivk-body-editor {
-  width: 100%;
-  min-height: 200px;
-  font-family: var(--font-monospace);
-  font-size: 12px;
-  line-height: 1.6;
-  padding: 12px;
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 4px;
-  background: var(--background-primary);
-  color: var(--text-normal);
-  resize: vertical;
-}
+/* (body editor now uses .ivk-editor-wrap overlay) */
 
 /* ── Auth ── */
 .ivk-auth-select {
@@ -175,18 +162,7 @@
   display: block;
 }
 
-.ivk-script-editor {
-  width: 100%;
-  min-height: 80px;
-  font-family: var(--font-monospace);
-  font-size: 12px;
-  line-height: 1.6;
-  padding: 8px;
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 4px;
-  background: var(--background-primary);
-  resize: vertical;
-}
+/* (script editor now uses .ivk-editor-wrap overlay) */
 
 /* ── Response panel ── */
 .ivk-response-panel {
@@ -459,6 +435,70 @@
 
 /* ── Body wrapper ── */
 .ivk-body-wrapper { position: relative; flex: 1; }
+
+/* ── Highlighted Editor (overlay approach) ── */
+.ivk-editor-wrap {
+  position: relative;
+  min-height: 200px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.ivk-editor-wrap.ivk-script-size { min-height: 80px; }
+
+.ivk-highlight,
+.ivk-editor-textarea {
+  font-family: var(--font-monospace);
+  font-size: 12px;
+  line-height: 1.7;
+  padding: 12px;
+  margin: 0;
+  border: none;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  tab-size: 2;
+}
+
+.ivk-highlight {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: auto;
+  pointer-events: none;
+  color: var(--text-muted);
+  background: var(--background-primary);
+  z-index: 0;
+}
+
+.ivk-editor-textarea {
+  position: relative;
+  width: 100%;
+  min-height: inherit;
+  resize: vertical;
+  background: transparent;
+  color: transparent;
+  caret-color: var(--text-normal);
+  z-index: 1;
+  outline: none;
+}
+
+.ivk-editor-textarea::selection {
+  background: rgba(59, 130, 246, 0.3);
+}
+
+/* ── Syntax highlighting tokens ── */
+.ivk-hl-key { color: #7dd3fc; }
+.ivk-hl-str { color: #86efac; }
+.ivk-hl-num { color: #fdba74; }
+.ivk-hl-bool { color: #c4b5fd; }
+.ivk-hl-var { color: #fbbf24; font-weight: 600; }
+.ivk-hl-comment { color: #6b7280; font-style: italic; }
+.ivk-hl-keyword { color: #c4b5fd; }
+.ivk-hl-api { color: #7dd3fc; font-weight: 600; }
 
 /* ── Body toolbar ── */
 .ivk-body-toolbar {
