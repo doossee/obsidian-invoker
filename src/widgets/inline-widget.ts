@@ -1,9 +1,7 @@
 // src/widgets/inline-widget.ts
 
 import { MarkdownPostProcessorContext, TFile, App } from 'obsidian';
-import { parseIvk } from '../parser/ivk-parser';
-import { RequestRunner, RunResult } from '../runner/request-runner';
-import { EnvManager } from '../env/env-manager';
+import { parseIvk, RequestRunner, RunResult, EnvManager } from 'ivkjs';
 
 export function registerInlineWidget(app: App, runner: RequestRunner, env: EnvManager) {
   return (source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) => {
@@ -237,7 +235,8 @@ function attachVariableTooltip(span: HTMLElement, varName: string, env: EnvManag
         cls: 'ivk-var-tooltip-copy',
         attr: { title: 'Copy value' },
       });
-      copyBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+      copyBtn.innerHTML =
+        '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
       copyBtn.addEventListener('click', async (e) => {
         e.stopPropagation();
         try {

@@ -1,11 +1,11 @@
 {
-  "id": "invoker",
-  "name": "Invoker",
-  "version": "0.1.0",
-  "minAppVersion": "1.0.0",
-  "description": "A Bruno-like API client. Create, run, and document HTTP requests with the .ivk file format.",
-  "author": "Doston Kamilov",
-  "authorUrl": "https://github.com/doossee",
-  "fundingUrl": "https://github.com/sponsors/doossee",
-  "isDesktopOnly": false
+	"id": "invoker",
+	"name": "Invoker",
+	"version": "0.2.0",
+	"minAppVersion": "1.0.0",
+	"description": "A Bruno-like API client. Create, run, and document HTTP requests with the .ivk file format.",
+	"author": "Doston Kamilov",
+	"authorUrl": "https://github.com/doossee",
+	"fundingUrl": "https://github.com/sponsors/doossee",
+	"isDesktopOnly": false
 }

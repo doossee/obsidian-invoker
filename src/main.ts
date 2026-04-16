@@ -1,12 +1,12 @@
 // src/main.ts
 
 import { Plugin, WorkspaceLeaf } from 'obsidian';
+import { EnvManager, RequestRunner } from 'ivkjs';
 import { InvokeSettings, DEFAULT_SETTINGS, IVK_VIEW_TYPE, IVK_EXTENSION } from './types';
 import { RequestView } from './views/request-view';
-import { RequestRunner } from './runner/request-runner';
-import { EnvManager } from './env/env-manager';
 import { InvokerSettingTab } from './settings/settings-tab';
 import { registerInlineWidget } from './widgets/inline-widget';
+import { ObsidianTransport } from './transport/obsidian-transport';
 
 export default class InvokerPlugin extends Plugin {
   settings: InvokeSettings;
@@ -18,7 +18,7 @@ export default class InvokerPlugin extends Plugin {
 
     this.env = new EnvManager(() => this.settings);
     this.env.setSaveCallback(() => this.saveSettings());
-    this.runner = new RequestRunner(this.env);
+    this.runner = new RequestRunner(this.env, new ObsidianTransport());
 
     // Register .ivk file extension
     this.registerExtensions([IVK_EXTENSION], IVK_VIEW_TYPE);
