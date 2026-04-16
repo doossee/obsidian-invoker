@@ -1,6 +1,6 @@
 // src/settings/settings-tab.ts
 
-import { App, PluginSettingTab, Setting } from 'obsidian';
+import { App, Notice, PluginSettingTab, Setting } from 'obsidian';
 import { InvokeSettings, IvkEnvironment } from '../types';
 
 export class InvokerSettingTab extends PluginSettingTab {
@@ -76,8 +76,14 @@ export class InvokerSettingTab extends PluginSettingTab {
     containerEl.createEl('h3', { text: 'Import / Export' });
 
     new Setting(containerEl).setName('Export Environments').addButton((btn) => {
-      btn.setButtonText('Copy to Clipboard').onClick(() => {
-        navigator.clipboard.writeText(JSON.stringify(this.settings.environments, null, 2));
+      btn.setButtonText('Copy to Clipboard').onClick(async () => {
+        const json = JSON.stringify(this.settings.environments, null, 2);
+        try {
+          await navigator.clipboard.writeText(json);
+          new Notice('Environments copied to clipboard');
+        } catch {
+          new Notice('Clipboard not available. Use Import textarea to copy manually.');
+        }
       });
     });
 
