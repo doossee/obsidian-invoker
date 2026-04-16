@@ -1,5 +1,5 @@
 {
-  "name": "obsidian-invoke",
+  "name": "obsidian-invoker",
   "version": "0.1.0",
   "description": "API client plugin for Obsidian with .ivk file format",
   "main": "main.js",
@@ -8,7 +8,7 @@
     "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
     "version": "node version-bump.mjs && git add manifest.json versions.json"
   },
-  "keywords": ["obsidian", "api", "rest", "http", "invoke"],
+  "keywords": ["obsidian", "api", "rest", "http", "invoker"],
   "author": "Doston Kamilov",
   "license": "MIT",
   "devDependencies": {

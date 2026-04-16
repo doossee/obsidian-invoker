@@ -3,7 +3,7 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
 import { InvokeSettings, IvkEnvironment } from '../types';
 
-export class InvokeSettingTab extends PluginSettingTab {
+export class InvokerSettingTab extends PluginSettingTab {
   private settings: InvokeSettings;
   private saveSettings: () => Promise<void>;
 
@@ -23,7 +23,7 @@ export class InvokeSettingTab extends PluginSettingTab {
     containerEl.empty();
     containerEl.addClass('ivk-settings');
 
-    containerEl.createEl('h2', { text: 'Invoke Settings' });
+    containerEl.createEl('h2', { text: 'Invoker Settings' });
 
     // Active environment
     new Setting(containerEl)

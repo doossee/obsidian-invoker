@@ -5,10 +5,10 @@ import { InvokeSettings, DEFAULT_SETTINGS, IVK_VIEW_TYPE, IVK_EXTENSION } from '
 import { RequestView } from './views/request-view';
 import { RequestRunner } from './runner/request-runner';
 import { EnvManager } from './env/env-manager';
-import { InvokeSettingTab } from './settings/settings-tab';
+import { InvokerSettingTab } from './settings/settings-tab';
 import { registerInlineWidget } from './widgets/inline-widget';
 
-export default class InvokePlugin extends Plugin {
+export default class InvokerPlugin extends Plugin {
   settings: InvokeSettings;
   env: EnvManager;
   runner: RequestRunner;
@@ -35,7 +35,7 @@ export default class InvokePlugin extends Plugin {
 
     // Settings tab
     this.addSettingTab(
-      new InvokeSettingTab(this.app, this, this.settings, () => this.saveSettings()),
+      new InvokerSettingTab(this.app, this, this.settings, () => this.saveSettings()),
     );
 
     // Status bar: active environment
