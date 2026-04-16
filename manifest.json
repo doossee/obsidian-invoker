@@ -1,0 +1,9 @@
+{
+  "id": "obsidian-invoke",
+  "name": "Invoke",
+  "version": "0.1.0",
+  "minAppVersion": "1.0.0",
+  "description": "API client for Obsidian — create, run, and document HTTP requests with .ivk files",
+  "author": "Doston Kamilov",
+  "isDesktopOnly": false
+}
