@@ -356,6 +356,11 @@ export class RequestView extends TextFileView {
       opts.onChange(textarea.value);
     });
 
+    // Hover-detection layer: find {{var}} under the mouse and show tooltip.
+    // The textarea is on top with pointer-events on, but mousemove still fires on it,
+    // so we can compute which var the cursor is over by mapping x,y → text position.
+    this.attachVariableHoverDetection(textarea, opts);
+
     // Tab indentation
     textarea.addEventListener('keydown', (e: KeyboardEvent) => {
       if (e.key === 'Tab') {
@@ -372,55 +377,384 @@ export class RequestView extends TextFileView {
     return textarea;
   }
 
-  private highlightCode(code: string, language: string): string {
-    // Escape HTML first
-    let escaped = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  private hoverTooltip: HTMLElement | null = null;
+  private hoverTooltipVar: string | null = null;
+  private hoverHideTimer: number | null = null;
 
-    // Highlight {{variables}} — red if unset, yellow if set
-    escaped = escaped.replace(/\{\{(\w+)\}\}/g, (_match, name) => {
-      const value = this.env.get(name);
-      const cls = value === undefined || value === '' ? 'ivk-hl-var ivk-hl-var-unset' : 'ivk-hl-var';
-      return `<span class="${cls}">{{${name}}}</span>`;
-    });
+  private attachVariableHoverDetection(
+    textarea: HTMLTextAreaElement,
+    opts: { value: string; language: string },
+  ): void {
+    // Use caretPositionFromPoint to find the character under the cursor,
+    // then check if the cursor is inside a {{var}} token.
+    let lastVar: string | null = null;
+    let lastRect: DOMRect | null = null;
 
-    if (language === 'json') {
-      // JSON keys
-      escaped = escaped.replace(
-        /(&quot;|")([\w\-\.]+)(&quot;|")(\s*:)/g,
-        '<span class="ivk-hl-key">$1$2$3</span>$4',
+    const onMove = (e: MouseEvent) => {
+      const text = textarea.value;
+      const offset = this.getOffsetAtPoint(textarea, e.clientX, e.clientY);
+      if (offset < 0) {
+        if (lastVar) this.scheduleHideHoverTooltip();
+        lastVar = null;
+        return;
+      }
+
+      // Find a {{var}} containing this offset
+      const re = /\{\{(\w+)\}\}/g;
+      let match: RegExpExecArray | null;
+      let foundVar: string | null = null;
+      let matchStart = -1;
+      let matchEnd = -1;
+      while ((match = re.exec(text)) !== null) {
+        if (offset >= match.index && offset <= match.index + match[0].length) {
+          foundVar = match[1];
+          matchStart = match.index;
+          matchEnd = match.index + match[0].length;
+          break;
+        }
+      }
+
+      if (foundVar !== lastVar) {
+        if (foundVar) {
+          // Compute approximate position for tooltip (center of the var)
+          const midOffset = Math.floor((matchStart + matchEnd) / 2);
+          const rect = this.getRectAtOffset(textarea, midOffset);
+          lastRect = rect;
+          this.showHoverTooltip(foundVar, rect);
+        } else {
+          this.scheduleHideHoverTooltip();
+        }
+        lastVar = foundVar;
+      }
+    };
+
+    const onLeave = () => {
+      lastVar = null;
+      this.scheduleHideHoverTooltip();
+    };
+
+    textarea.addEventListener('mousemove', onMove);
+    textarea.addEventListener('mouseleave', onLeave);
+  }
+
+  private getOffsetAtPoint(textarea: HTMLTextAreaElement, x: number, y: number): number {
+    // Use the modern caretPositionFromPoint API (Firefox) or caretRangeFromPoint (Chromium/Safari)
+    type DocWithCaret = Document & {
+      caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node; offset: number } | null;
+    };
+    const doc = document as DocWithCaret;
+
+    if (typeof doc.caretPositionFromPoint === 'function') {
+      const pos = doc.caretPositionFromPoint(x, y);
+      if (pos) return pos.offset;
+    }
+    if (typeof doc.caretRangeFromPoint === 'function') {
+      const range = doc.caretRangeFromPoint(x, y);
+      if (range) return range.startOffset;
+    }
+    return -1;
+  }
+
+  private getRectAtOffset(textarea: HTMLTextAreaElement, offset: number): DOMRect {
+    // Mirror trick: create a hidden div with the same styles as the textarea,
+    // insert text up to the offset followed by a marker span, measure the span.
+    const mirror = document.body.createDiv({ cls: 'ivk-mirror' });
+    const computed = window.getComputedStyle(textarea);
+    const propsToCopy = [
+      'fontFamily', 'fontSize', 'fontWeight', 'lineHeight', 'letterSpacing',
+      'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
+      'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
+      'whiteSpace', 'wordWrap', 'wordBreak', 'tabSize', 'boxSizing',
+    ];
+    for (const prop of propsToCopy) {
+      (mirror.style as unknown as Record<string, string>)[prop] = computed.getPropertyValue(
+        prop.replace(/[A-Z]/g, (m) => '-' + m.toLowerCase()),
       );
-      // JSON strings (after colon)
-      escaped = escaped.replace(
-        /(:\s*)(&quot;|")((?:(?!<span)(?!&quot;|").)*?)(&quot;|")/g,
-        '$1<span class="ivk-hl-str">$2$3$4</span>',
-      );
-      // Numbers
-      escaped = escaped.replace(/:\s*(\d+\.?\d*)/g, (match, num) =>
-        match.replace(num, `<span class="ivk-hl-num">${num}</span>`),
-      );
-      // Booleans + null
-      escaped = escaped.replace(/\b(true|false|null)\b/g, '<span class="ivk-hl-bool">$1</span>');
-    } else if (language === 'js') {
-      // Comments
-      escaped = escaped.replace(/(\/\/.*$)/gm, '<span class="ivk-hl-comment">$1</span>');
-      // Keywords
-      escaped = escaped.replace(
-        /\b(const|let|var|function|return|if|else|for|while|await|async|new|throw|try|catch)\b/g,
-        '<span class="ivk-hl-keyword">$1</span>',
-      );
-      // Strings
-      escaped = escaped.replace(
-        /("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`)/g,
-        '<span class="ivk-hl-str">$1</span>',
-      );
-      // Numbers
-      escaped = escaped.replace(/\b(\d+\.?\d*)\b/g, '<span class="ivk-hl-num">$1</span>');
-      // Method calls
-      escaped = escaped.replace(/\b(ivk|res|expect|test)\b/g, '<span class="ivk-hl-api">$1</span>');
+    }
+    mirror.style.position = 'absolute';
+    mirror.style.visibility = 'hidden';
+    mirror.style.top = '0';
+    mirror.style.left = '0';
+    mirror.style.width = `${textarea.clientWidth}px`;
+    mirror.style.height = 'auto';
+    mirror.style.overflow = 'hidden';
+
+    const before = textarea.value.substring(0, offset);
+    const marker = document.createElement('span');
+    marker.textContent = '\u200b';
+    mirror.textContent = before;
+    mirror.appendChild(marker);
+
+    const taRect = textarea.getBoundingClientRect();
+    const markerRect = marker.getBoundingClientRect();
+    const mirrorRect = mirror.getBoundingClientRect();
+
+    // Translate marker position from mirror's coordinate space to textarea's
+    const left = taRect.left + (markerRect.left - mirrorRect.left) - textarea.scrollLeft;
+    const top = taRect.top + (markerRect.top - mirrorRect.top) - textarea.scrollTop;
+
+    mirror.remove();
+
+    return new DOMRect(left, top, markerRect.width, markerRect.height || 16);
+  }
+
+  private showHoverTooltip(varName: string, rect: DOMRect): void {
+    if (this.hoverHideTimer) {
+      window.clearTimeout(this.hoverHideTimer);
+      this.hoverHideTimer = null;
+    }
+    if (this.hoverTooltip && this.hoverTooltipVar === varName) {
+      // Reposition only
+      this.hoverTooltip.style.left = `${rect.left}px`;
+      this.hoverTooltip.style.top = `${rect.bottom + 4}px`;
+      return;
+    }
+    this.hideHoverTooltip();
+
+    const tooltip = document.body.createDiv({ cls: 'ivk-var-tooltip' });
+    const value = this.env.get(varName);
+
+    const header = tooltip.createDiv({ cls: 'ivk-var-tooltip-header' });
+    header.createEl('span', { cls: 'ivk-var-tooltip-name', text: varName });
+
+    const valueRow = tooltip.createDiv({ cls: 'ivk-var-tooltip-value' });
+    if (value === undefined || value === '') {
+      valueRow.createEl('span', { cls: 'ivk-var-tooltip-unset', text: 'not set' });
+    } else {
+      valueRow.createEl('span', { cls: 'ivk-var-tooltip-set', text: value });
     }
 
-    // Trailing newline so caret positioning matches
-    return escaped + '\n';
+    const editRow = tooltip.createDiv({ cls: 'ivk-var-tooltip-edit' });
+    const input = editRow.createEl('input', {
+      cls: 'ivk-var-tooltip-input',
+      type: 'text',
+      value: value ?? '',
+      attr: { placeholder: 'set value', spellcheck: 'false' },
+    });
+    const saveBtn = editRow.createEl('button', { cls: 'ivk-var-tooltip-save', text: 'Save' });
+
+    const save = () => {
+      this.env.set(varName, input.value);
+      this.hideHoverTooltip();
+      this.render(); // Re-render to update highlight colors
+    };
+    saveBtn.addEventListener('click', save);
+    input.addEventListener('keydown', (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        save();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        this.hideHoverTooltip();
+      }
+    });
+
+    tooltip.addEventListener('mouseenter', () => {
+      if (this.hoverHideTimer) {
+        window.clearTimeout(this.hoverHideTimer);
+        this.hoverHideTimer = null;
+      }
+    });
+    tooltip.addEventListener('mouseleave', () => this.scheduleHideHoverTooltip());
+
+    tooltip.style.position = 'fixed';
+    tooltip.style.left = `${rect.left}px`;
+    tooltip.style.top = `${rect.bottom + 4}px`;
+    tooltip.style.zIndex = '1000';
+
+    this.hoverTooltip = tooltip;
+    this.hoverTooltipVar = varName;
+  }
+
+  private scheduleHideHoverTooltip(): void {
+    if (this.hoverHideTimer) window.clearTimeout(this.hoverHideTimer);
+    this.hoverHideTimer = window.setTimeout(() => this.hideHoverTooltip(), 300);
+  }
+
+  private hideHoverTooltip(): void {
+    if (this.hoverTooltip) {
+      this.hoverTooltip.remove();
+      this.hoverTooltip = null;
+      this.hoverTooltipVar = null;
+    }
+    if (this.hoverHideTimer) {
+      window.clearTimeout(this.hoverHideTimer);
+      this.hoverHideTimer = null;
+    }
+  }
+
+  private highlightCode(code: string, language: string): string {
+    // Single-pass tokenizer to avoid regex overlap with already-emitted markup.
+    const tokens = language === 'js' ? this.tokenizeJs(code) : this.tokenizeJson(code);
+    return tokens.map((t) => this.renderToken(t)).join('') + '\n';
+  }
+
+  private renderToken(t: { type: string; value: string }): string {
+    const escaped = t.value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    if (t.type === 'text') return escaped;
+    if (t.type === 'var') {
+      const name = t.value.slice(2, -2);
+      const value = this.env.get(name);
+      const cls = value === undefined || value === '' ? 'ivk-hl-var ivk-hl-var-unset' : 'ivk-hl-var';
+      return `<span class="${cls}">${escaped}</span>`;
+    }
+    return `<span class="ivk-hl-${t.type}">${escaped}</span>`;
+  }
+
+  private tokenizeJs(code: string): Array<{ type: string; value: string }> {
+    const tokens: Array<{ type: string; value: string }> = [];
+    const KEYWORDS = new Set([
+      'const', 'let', 'var', 'function', 'return', 'if', 'else', 'for', 'while',
+      'await', 'async', 'new', 'throw', 'try', 'catch', 'do', 'switch', 'case', 'break', 'continue',
+    ]);
+    const APIS = new Set(['ivk', 'res', 'expect', 'test']);
+    const BOOLS = new Set(['true', 'false', 'null', 'undefined']);
+
+    let i = 0;
+    while (i < code.length) {
+      const ch = code[i];
+      const rest = code.slice(i);
+
+      // Variables {{name}}
+      const varMatch = rest.match(/^\{\{(\w+)\}\}/);
+      if (varMatch) {
+        tokens.push({ type: 'var', value: varMatch[0] });
+        i += varMatch[0].length;
+        continue;
+      }
+      // Line comment
+      if (ch === '/' && code[i + 1] === '/') {
+        const end = code.indexOf('\n', i);
+        const stop = end === -1 ? code.length : end;
+        tokens.push({ type: 'comment', value: code.slice(i, stop) });
+        i = stop;
+        continue;
+      }
+      // Block comment
+      if (ch === '/' && code[i + 1] === '*') {
+        const end = code.indexOf('*/', i + 2);
+        const stop = end === -1 ? code.length : end + 2;
+        tokens.push({ type: 'comment', value: code.slice(i, stop) });
+        i = stop;
+        continue;
+      }
+      // Strings (single, double, backtick)
+      if (ch === '"' || ch === "'" || ch === '`') {
+        const quote = ch;
+        let j = i + 1;
+        while (j < code.length) {
+          if (code[j] === '\\') { j += 2; continue; }
+          if (code[j] === quote) { j++; break; }
+          j++;
+        }
+        tokens.push({ type: 'str', value: code.slice(i, j) });
+        i = j;
+        continue;
+      }
+      // Numbers
+      const numMatch = rest.match(/^-?\d+\.?\d*/);
+      if (numMatch && (i === 0 || /[\s,({\[:=+\-*/<>!&|?]/.test(code[i - 1] ?? ' '))) {
+        tokens.push({ type: 'num', value: numMatch[0] });
+        i += numMatch[0].length;
+        continue;
+      }
+      // Identifiers (keyword / api / boolean / plain)
+      const idMatch = rest.match(/^[a-zA-Z_$][\w$]*/);
+      if (idMatch) {
+        const word = idMatch[0];
+        if (KEYWORDS.has(word)) tokens.push({ type: 'keyword', value: word });
+        else if (APIS.has(word)) tokens.push({ type: 'api', value: word });
+        else if (BOOLS.has(word)) tokens.push({ type: 'bool', value: word });
+        else tokens.push({ type: 'text', value: word });
+        i += word.length;
+        continue;
+      }
+      // Anything else
+      tokens.push({ type: 'text', value: ch });
+      i++;
+    }
+    return tokens;
+  }
+
+  private tokenizeJson(code: string): Array<{ type: string; value: string }> {
+    const tokens: Array<{ type: string; value: string }> = [];
+    const BOOLS = new Set(['true', 'false', 'null']);
+
+    let i = 0;
+    while (i < code.length) {
+      const ch = code[i];
+      const rest = code.slice(i);
+
+      // Variables {{name}}
+      const varMatch = rest.match(/^\{\{(\w+)\}\}/);
+      if (varMatch) {
+        tokens.push({ type: 'var', value: varMatch[0] });
+        i += varMatch[0].length;
+        continue;
+      }
+      // String — peek ahead to see if it's a key (followed by `:`)
+      if (ch === '"') {
+        let j = i + 1;
+        while (j < code.length) {
+          if (code[j] === '\\') { j += 2; continue; }
+          if (code[j] === '"') { j++; break; }
+          j++;
+        }
+        // Skip whitespace after the closing quote
+        let k = j;
+        while (k < code.length && /\s/.test(code[k])) k++;
+        const isKey = code[k] === ':';
+        const stringValue = code.slice(i, j);
+        // Tokenize the string content for embedded {{vars}}
+        if (stringValue.includes('{{')) {
+          this.pushStringWithVars(tokens, stringValue, isKey ? 'key' : 'str');
+        } else {
+          tokens.push({ type: isKey ? 'key' : 'str', value: stringValue });
+        }
+        i = j;
+        continue;
+      }
+      // Numbers
+      const numMatch = rest.match(/^-?\d+\.?\d*/);
+      if (numMatch) {
+        tokens.push({ type: 'num', value: numMatch[0] });
+        i += numMatch[0].length;
+        continue;
+      }
+      // Booleans / null
+      const boolMatch = rest.match(/^(true|false|null)\b/);
+      if (boolMatch && BOOLS.has(boolMatch[1])) {
+        tokens.push({ type: 'bool', value: boolMatch[1] });
+        i += boolMatch[1].length;
+        continue;
+      }
+      // Anything else
+      tokens.push({ type: 'text', value: ch });
+      i++;
+    }
+    return tokens;
+  }
+
+  private pushStringWithVars(
+    tokens: Array<{ type: string; value: string }>,
+    stringValue: string,
+    stringType: string,
+  ): void {
+    // Splits a JSON string token into runs of [string-part, var, string-part, var, ...]
+    // so that {{vars}} inside strings still get their own coloring.
+    const re = /\{\{(\w+)\}\}/g;
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+    while ((match = re.exec(stringValue)) !== null) {
+      if (match.index > lastIndex) {
+        tokens.push({ type: stringType, value: stringValue.slice(lastIndex, match.index) });
+      }
+      tokens.push({ type: 'var', value: match[0] });
+      lastIndex = match.index + match[0].length;
+    }
+    if (lastIndex < stringValue.length) {
+      tokens.push({ type: stringType, value: stringValue.slice(lastIndex) });
+    }
   }
 
   private autocompleteEl: HTMLElement | null = null;
