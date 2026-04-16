@@ -1,9 +1,11 @@
 {
-  "id": "obsidian-invoker",
+  "id": "invoker",
   "name": "Invoker",
   "version": "0.1.0",
   "minAppVersion": "1.0.0",
-  "description": "API client for Obsidian — create, run, and document HTTP requests with .ivk files",
+  "description": "A Bruno-like API client for Obsidian. Create, run, and document HTTP requests with the .ivk file format.",
   "author": "Doston Kamilov",
+  "authorUrl": "https://github.com/doossee",
+  "fundingUrl": "https://github.com/sponsors/doossee",
   "isDesktopOnly": false
 }

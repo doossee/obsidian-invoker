@@ -5,11 +5,7 @@ import { parseIvk } from '../parser/ivk-parser';
 import { RequestRunner, RunResult } from '../runner/request-runner';
 import { EnvManager } from '../env/env-manager';
 
-export function registerInlineWidget(
-  app: App,
-  runner: RequestRunner,
-  env: EnvManager,
-) {
+export function registerInlineWidget(app: App, runner: RequestRunner, env: EnvManager) {
   return (source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) => {
     const lines = source.trim().split('\n');
     const config: Record<string, string> = {};
@@ -148,9 +144,11 @@ function renderWidgetResponse(container: HTMLElement, result: RunResult): void {
 
   // Status line
   const statusLine = container.createDiv({ cls: 'ivk-widget-status' });
-  const statusClass = response.error ? 'ivk-status-error'
-    : response.status < 300 ? 'ivk-status-ok'
-    : 'ivk-status-error';
+  const statusClass = response.error
+    ? 'ivk-status-error'
+    : response.status < 300
+      ? 'ivk-status-ok'
+      : 'ivk-status-error';
 
   statusLine.createEl('span', {
     cls: `ivk-status-badge ${statusClass}`,
@@ -159,7 +157,7 @@ function renderWidgetResponse(container: HTMLElement, result: RunResult): void {
   statusLine.createEl('span', { cls: 'ivk-response-time', text: `${response.time}ms` });
 
   if (testResults.length > 0) {
-    const passed = testResults.filter(t => t.passed).length;
+    const passed = testResults.filter((t) => t.passed).length;
     statusLine.createEl('span', {
       cls: passed === testResults.length ? 'ivk-tests-pass' : 'ivk-tests-fail',
       text: `${passed}/${testResults.length} tests`,

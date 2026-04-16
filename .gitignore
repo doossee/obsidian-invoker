@@ -1,4 +1,19 @@
-node_modules/
+# Build output
 main.js
 *.map
+
+# Dependencies
+node_modules/
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
 .DS_Store
+Thumbs.db
+
+# Plugin runtime
+data.json

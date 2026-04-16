@@ -1,0 +1,58 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Extract version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          version="${{ steps.version.outputs.version }}"
+
+          # Extract the matching CHANGELOG section if present, fallback to a generic note
+          notes_file="$(mktemp)"
+          if grep -q "## \[${version}\]" CHANGELOG.md; then
+            awk -v ver="${version}" '
+              /^## \[/ {
+                if (found) exit
+                if ($0 ~ "\\[" ver "\\]") { found = 1; next }
+              }
+              found { print }
+            ' CHANGELOG.md > "${notes_file}"
+          else
+            echo "Release ${tag}" > "${notes_file}"
+          fi
+
+          gh release create "${tag}" \
+            --title "${tag}" \
+            --notes-file "${notes_file}" \
+            main.js manifest.json styles.css

@@ -15,9 +15,9 @@ export class EnvManager {
 
   get(name: string): string | undefined {
     // Resolution order: runtime > active env > collection
-    return this.runtimeVars[name]
-      ?? this.getActiveEnv()?.variables[name]
-      ?? this.collectionVars[name];
+    return (
+      this.runtimeVars[name] ?? this.getActiveEnv()?.variables[name] ?? this.collectionVars[name]
+    );
   }
 
   set(name: string, value: string): void {

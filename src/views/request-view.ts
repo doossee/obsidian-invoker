@@ -121,11 +121,21 @@ export class RequestView extends TextFileView {
     this.tabContent = container.createDiv({ cls: 'ivk-tab-content' });
 
     switch (this.activeTab) {
-      case 'headers': this.renderHeadersTab(); break;
-      case 'body': this.renderBodyTab(); break;
-      case 'auth': this.renderAuthTab(); break;
-      case 'scripts': this.renderScriptsTab(); break;
-      case 'params': this.renderParamsTab(); break;
+      case 'headers':
+        this.renderHeadersTab();
+        break;
+      case 'body':
+        this.renderBodyTab();
+        break;
+      case 'auth':
+        this.renderAuthTab();
+        break;
+      case 'scripts':
+        this.renderScriptsTab();
+        break;
+      case 'params':
+        this.renderParamsTab();
+        break;
     }
   }
 
@@ -136,7 +146,11 @@ export class RequestView extends TextFileView {
     const entries = Object.entries(this.request!.headers);
     for (const [key, value] of entries) {
       const row = table.createDiv({ cls: 'ivk-kv-row' });
-      const keyInput = row.createEl('input', { cls: 'ivk-kv-key', value: key, placeholder: 'Header name' });
+      const keyInput = row.createEl('input', {
+        cls: 'ivk-kv-key',
+        value: key,
+        placeholder: 'Header name',
+      });
       const valInput = row.createEl('input', { cls: 'ivk-kv-value', value, placeholder: 'Value' });
       const delBtn = row.createEl('button', { cls: 'ivk-kv-del', text: '×' });
 
@@ -203,7 +217,13 @@ export class RequestView extends TextFileView {
 
   private createHighlightedEditor(
     parent: HTMLElement,
-    opts: { value: string; language: string; placeholder: string; onChange: (val: string) => void; cls?: string },
+    opts: {
+      value: string;
+      language: string;
+      placeholder: string;
+      onChange: (val: string) => void;
+      cls?: string;
+    },
   ): HTMLTextAreaElement {
     const editorWrap = parent.createDiv({ cls: `ivk-editor-wrap ${opts.cls ?? ''}` });
     const highlight = editorWrap.createEl('pre', { cls: 'ivk-highlight' });
@@ -245,16 +265,10 @@ export class RequestView extends TextFileView {
 
   private highlightCode(code: string, language: string): string {
     // Escape HTML first
-    let escaped = code
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;');
+    let escaped = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
     // Highlight {{variables}} in all languages
-    escaped = escaped.replace(
-      /(\{\{[\w]+\}\})/g,
-      '<span class="ivk-hl-var">$1</span>',
-    );
+    escaped = escaped.replace(/(\{\{[\w]+\}\})/g, '<span class="ivk-hl-var">$1</span>');
 
     if (language === 'json') {
       // JSON keys
@@ -268,21 +282,14 @@ export class RequestView extends TextFileView {
         '$1<span class="ivk-hl-str">$2$3$4</span>',
       );
       // Numbers
-      escaped = escaped.replace(
-        /:\s*(\d+\.?\d*)/g,
-        (match, num) => match.replace(num, `<span class="ivk-hl-num">${num}</span>`),
+      escaped = escaped.replace(/:\s*(\d+\.?\d*)/g, (match, num) =>
+        match.replace(num, `<span class="ivk-hl-num">${num}</span>`),
       );
       // Booleans + null
-      escaped = escaped.replace(
-        /\b(true|false|null)\b/g,
-        '<span class="ivk-hl-bool">$1</span>',
-      );
+      escaped = escaped.replace(/\b(true|false|null)\b/g, '<span class="ivk-hl-bool">$1</span>');
     } else if (language === 'js') {
       // Comments
-      escaped = escaped.replace(
-        /(\/\/.*$)/gm,
-        '<span class="ivk-hl-comment">$1</span>',
-      );
+      escaped = escaped.replace(/(\/\/.*$)/gm, '<span class="ivk-hl-comment">$1</span>');
       // Keywords
       escaped = escaped.replace(
         /\b(const|let|var|function|return|if|else|for|while|await|async|new|throw|try|catch)\b/g,
@@ -294,15 +301,9 @@ export class RequestView extends TextFileView {
         '<span class="ivk-hl-str">$1</span>',
       );
       // Numbers
-      escaped = escaped.replace(
-        /\b(\d+\.?\d*)\b/g,
-        '<span class="ivk-hl-num">$1</span>',
-      );
+      escaped = escaped.replace(/\b(\d+\.?\d*)\b/g, '<span class="ivk-hl-num">$1</span>');
       // Method calls
-      escaped = escaped.replace(
-        /\b(ivk|res|expect|test)\b/g,
-        '<span class="ivk-hl-api">$1</span>',
-      );
+      escaped = escaped.replace(/\b(ivk|res|expect|test)\b/g, '<span class="ivk-hl-api">$1</span>');
     }
 
     // Trailing newline so caret positioning matches
@@ -322,7 +323,7 @@ export class RequestView extends TextFileView {
     if (lastOpen > lastClose) {
       const query = textBefore.substring(lastOpen + 2).toLowerCase();
       const allVars = this.env.getAllVariables();
-      const matches = Object.keys(allVars).filter(k => k.toLowerCase().startsWith(query));
+      const matches = Object.keys(allVars).filter((k) => k.toLowerCase().startsWith(query));
 
       if (matches.length > 0) {
         this.showAutocomplete(textarea, wrapper, matches, query, cursorPos);
@@ -349,7 +350,10 @@ export class RequestView extends TextFileView {
       const value = this.env.get(varName) ?? '';
       const item = dropdown.createDiv({ cls: 'ivk-autocomplete-item' });
       item.createEl('span', { cls: 'ivk-ac-name', text: `{{${varName}}}` });
-      item.createEl('span', { cls: 'ivk-ac-value', text: value.length > 30 ? value.substring(0, 30) + '...' : value });
+      item.createEl('span', {
+        cls: 'ivk-ac-value',
+        text: value.length > 30 ? value.substring(0, 30) + '...' : value,
+      });
 
       item.addEventListener('click', () => {
         const before = textarea.value.substring(0, cursorPos - query.length);
@@ -396,8 +400,15 @@ export class RequestView extends TextFileView {
       });
     } else if (authType === 'basic') {
       const parts = authValue.replace('basic ', '').split(/\s+/);
-      const userInput = tokenContainer.createEl('input', { placeholder: 'Username', value: parts[0] || '' });
-      const passInput = tokenContainer.createEl('input', { placeholder: 'Password', value: parts[1] || '', type: 'password' });
+      const userInput = tokenContainer.createEl('input', {
+        placeholder: 'Username',
+        value: parts[0] || '',
+      });
+      const passInput = tokenContainer.createEl('input', {
+        placeholder: 'Password',
+        value: parts[1] || '',
+        type: 'password',
+      });
       const update = () => {
         this.request!.directives.auth = `basic ${userInput.value} ${passInput.value}`;
         this.scheduleSave();
@@ -449,7 +460,10 @@ export class RequestView extends TextFileView {
     this.responsePanel = container.createDiv({ cls: 'ivk-response-panel' });
 
     if (!this.lastResult) {
-      this.responsePanel.createDiv({ cls: 'ivk-response-empty', text: 'Click Send to execute the request' });
+      this.responsePanel.createDiv({
+        cls: 'ivk-response-empty',
+        text: 'Click Send to execute the request',
+      });
       return;
     }
 
@@ -457,10 +471,13 @@ export class RequestView extends TextFileView {
 
     // Status bar
     const statusBar = this.responsePanel.createDiv({ cls: 'ivk-response-status' });
-    const statusClass = response.error ? 'ivk-status-error'
-      : response.status < 300 ? 'ivk-status-ok'
-      : response.status < 400 ? 'ivk-status-redirect'
-      : 'ivk-status-error';
+    const statusClass = response.error
+      ? 'ivk-status-error'
+      : response.status < 300
+        ? 'ivk-status-ok'
+        : response.status < 400
+          ? 'ivk-status-redirect'
+          : 'ivk-status-error';
 
     statusBar.createEl('span', {
       cls: `ivk-status-badge ${statusClass}`,
@@ -470,7 +487,7 @@ export class RequestView extends TextFileView {
     statusBar.createEl('span', { cls: 'ivk-response-size', text: `${response.size}B` });
 
     if (testResults.length > 0) {
-      const passed = testResults.filter(t => t.passed).length;
+      const passed = testResults.filter((t) => t.passed).length;
       statusBar.createEl('span', {
         cls: `ivk-test-badge ${passed === testResults.length ? 'ivk-tests-pass' : 'ivk-tests-fail'}`,
         text: `Tests: ${passed}/${testResults.length}`,
@@ -507,7 +524,9 @@ export class RequestView extends TextFileView {
       const testsSection = this.responsePanel.createDiv({ cls: 'ivk-response-tests' });
       testsSection.createEl('div', { cls: 'ivk-tests-label', text: 'Tests' });
       for (const t of testResults) {
-        const row = testsSection.createDiv({ cls: `ivk-test-row ${t.passed ? 'ivk-test-pass' : 'ivk-test-fail'}` });
+        const row = testsSection.createDiv({
+          cls: `ivk-test-row ${t.passed ? 'ivk-test-pass' : 'ivk-test-fail'}`,
+        });
         row.createEl('span', { text: t.passed ? '✓' : '✗', cls: 'ivk-test-icon' });
         row.createEl('span', { text: t.name, cls: 'ivk-test-name' });
         if (t.error) row.createEl('span', { text: t.error, cls: 'ivk-test-error' });
@@ -526,7 +545,14 @@ export class RequestView extends TextFileView {
       this.lastResult = await this.runner.run(this.request);
     } catch (e) {
       this.lastResult = {
-        response: { status: 0, headers: {}, body: null, time: 0, size: 0, error: (e as Error).message },
+        response: {
+          status: 0,
+          headers: {},
+          body: null,
+          time: 0,
+          size: 0,
+          error: (e as Error).message,
+        },
         testResults: [],
         logs: [],
       };

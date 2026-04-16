@@ -66,7 +66,8 @@ export default class InvokerPlugin extends Plugin {
       callback: async () => {
         const folder = this.app.workspace.getActiveFile()?.parent?.path ?? '';
         const path = `${folder ? folder + '/' : ''}new-request.ivk`;
-        const content = '@name New Request\n\nGET {{baseUrl}}/api\nContent-Type: application/json\n';
+        const content =
+          '@name New Request\n\nGET {{baseUrl}}/api\nContent-Type: application/json\n';
         const file = await this.app.vault.create(path, content);
         const leaf = this.app.workspace.getLeaf(false);
         await leaf.openFile(file);

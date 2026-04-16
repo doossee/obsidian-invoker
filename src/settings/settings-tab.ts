@@ -7,12 +7,7 @@ export class InvokerSettingTab extends PluginSettingTab {
   private settings: InvokeSettings;
   private saveSettings: () => Promise<void>;
 
-  constructor(
-    app: App,
-    plugin: any,
-    settings: InvokeSettings,
-    saveSettings: () => Promise<void>,
-  ) {
+  constructor(app: App, plugin: any, settings: InvokeSettings, saveSettings: () => Promise<void>) {
     super(app, plugin);
     this.settings = settings;
     this.saveSettings = saveSettings;
@@ -63,50 +58,46 @@ export class InvokerSettingTab extends PluginSettingTab {
     }
 
     // Add environment button
-    new Setting(containerEl)
-      .addButton((btn) => {
-        btn.setButtonText('+ Add Environment')
-          .setCta()
-          .onClick(async () => {
-            this.settings.environments.push({
-              name: `env-${this.settings.environments.length + 1}`,
-              variables: {},
-            });
-            await this.saveSettings();
-            this.display();
+    new Setting(containerEl).addButton((btn) => {
+      btn
+        .setButtonText('+ Add Environment')
+        .setCta()
+        .onClick(async () => {
+          this.settings.environments.push({
+            name: `env-${this.settings.environments.length + 1}`,
+            variables: {},
           });
-      });
+          await this.saveSettings();
+          this.display();
+        });
+    });
 
     // Import/Export
     containerEl.createEl('h3', { text: 'Import / Export' });
 
-    new Setting(containerEl)
-      .setName('Export Environments')
-      .addButton((btn) => {
-        btn.setButtonText('Copy to Clipboard').onClick(() => {
-          navigator.clipboard.writeText(JSON.stringify(this.settings.environments, null, 2));
-        });
+    new Setting(containerEl).setName('Export Environments').addButton((btn) => {
+      btn.setButtonText('Copy to Clipboard').onClick(() => {
+        navigator.clipboard.writeText(JSON.stringify(this.settings.environments, null, 2));
       });
+    });
 
-    new Setting(containerEl)
-      .setName('Import Environments')
-      .addTextArea((text) => {
-        text.setPlaceholder('Paste JSON here...');
-        text.inputEl.addClass('ivk-import-area');
-        text.onChange(async (value) => {
-          try {
-            const envs = JSON.parse(value) as IvkEnvironment[];
-            if (Array.isArray(envs)) {
-              this.settings.environments = envs;
-              this.settings.activeEnvironmentIndex = 0;
-              await this.saveSettings();
-              this.display();
-            }
-          } catch {
-            // Invalid JSON — ignore
+    new Setting(containerEl).setName('Import Environments').addTextArea((text) => {
+      text.setPlaceholder('Paste JSON here...');
+      text.inputEl.addClass('ivk-import-area');
+      text.onChange(async (value) => {
+        try {
+          const envs = JSON.parse(value) as IvkEnvironment[];
+          if (Array.isArray(envs)) {
+            this.settings.environments = envs;
+            this.settings.activeEnvironmentIndex = 0;
+            await this.saveSettings();
+            this.display();
           }
-        });
+        } catch {
+          // Invalid JSON — ignore
+        }
       });
+    });
   }
 
   private renderEnvironment(container: HTMLElement, index: number): void {
@@ -128,7 +119,10 @@ export class InvokerSettingTab extends PluginSettingTab {
         btn.onClick(async () => {
           this.settings.environments.splice(index, 1);
           if (this.settings.activeEnvironmentIndex >= this.settings.environments.length) {
-            this.settings.activeEnvironmentIndex = Math.max(0, this.settings.environments.length - 1);
+            this.settings.activeEnvironmentIndex = Math.max(
+              0,
+              this.settings.environments.length - 1,
+            );
           }
           await this.saveSettings();
           this.display();
@@ -141,7 +135,11 @@ export class InvokerSettingTab extends PluginSettingTab {
 
     for (const [key, value] of entries) {
       const row = varsContainer.createDiv({ cls: 'ivk-env-var-row' });
-      const keyInput = row.createEl('input', { cls: 'ivk-env-key', value: key, placeholder: 'Variable name' });
+      const keyInput = row.createEl('input', {
+        cls: 'ivk-env-key',
+        value: key,
+        placeholder: 'Variable name',
+      });
       const valInput = row.createEl('input', { cls: 'ivk-env-val', value, placeholder: 'Value' });
       const delBtn = row.createEl('button', { cls: 'ivk-env-var-del', text: '×' });
 
@@ -162,7 +160,10 @@ export class InvokerSettingTab extends PluginSettingTab {
     }
 
     // Add variable button
-    const addVarBtn = varsContainer.createEl('button', { cls: 'ivk-env-add-var', text: '+ Variable' });
+    const addVarBtn = varsContainer.createEl('button', {
+      cls: 'ivk-env-add-var',
+      text: '+ Variable',
+    });
     addVarBtn.addEventListener('click', async () => {
       env.variables[''] = '';
       await this.saveSettings();

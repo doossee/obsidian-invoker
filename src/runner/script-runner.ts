@@ -105,13 +105,16 @@ export class ScriptRunner {
 
     const expect = (actual: any) => ({
       toBe: (expected: any) => {
-        if (actual !== expected) throw new Error(`Expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
+        if (actual !== expected)
+          throw new Error(`Expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
       },
       toBeDefined: () => {
-        if (actual === undefined || actual === null) throw new Error(`Expected value to be defined, got ${actual}`);
+        if (actual === undefined || actual === null)
+          throw new Error(`Expected value to be defined, got ${actual}`);
       },
       toContain: (sub: string) => {
-        if (!String(actual).includes(sub)) throw new Error(`Expected "${actual}" to contain "${sub}"`);
+        if (!String(actual).includes(sub))
+          throw new Error(`Expected "${actual}" to contain "${sub}"`);
       },
       toBeGreaterThan: (n: number) => {
         if (actual <= n) throw new Error(`Expected ${actual} > ${n}`);
