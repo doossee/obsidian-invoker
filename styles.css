@@ -30,15 +30,71 @@
   min-width: 80px;
 }
 
-.ivk-url-input {
+/* URL field — overlay-based highlighted input */
+.ivk-url-wrap {
   flex: 1;
-  font-family: var(--font-monospace);
-  font-size: 13px;
-  padding: 6px 10px;
+  position: relative;
+  height: 32px;
   border-radius: 4px;
   border: 1px solid var(--background-modifier-border);
   background: var(--background-primary);
+  overflow: hidden;
+}
+
+.ivk-url-highlight,
+.ivk-url-input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  font-family: var(--font-monospace);
+  font-size: 13px;
+  line-height: 30px;
+  padding: 0 10px;
+  white-space: pre;
+  overflow-x: auto;
+  overflow-y: hidden;
+  margin: 0;
+}
+
+.ivk-url-highlight {
+  pointer-events: none;
   color: var(--text-normal);
+  z-index: 0;
+  scrollbar-width: none;
+}
+
+.ivk-url-highlight::-webkit-scrollbar {
+  display: none;
+}
+
+.ivk-url-input {
+  border: none !important;
+  background: transparent !important;
+  color: transparent !important;
+  caret-color: var(--text-normal);
+  z-index: 1;
+  outline: none;
+  width: 100%;
+  box-shadow: none !important;
+}
+
+.ivk-url-input:hover,
+.ivk-url-input:focus,
+.ivk-url-input:active {
+  background: transparent !important;
+  color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.ivk-url-input::selection {
+  background: rgba(167, 139, 250, 0.3);
+}
+
+.ivk-url-input::placeholder {
+  color: var(--text-muted);
 }
 
 .ivk-send-btn {

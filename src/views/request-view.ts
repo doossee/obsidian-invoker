@@ -80,17 +80,8 @@ export class RequestView extends TextFileView {
       this.scheduleSave();
     });
 
-    // URL input
-    const urlInput = this.topBar.createEl('input', {
-      cls: 'ivk-url-input',
-      type: 'text',
-      placeholder: '{{baseUrl}}/api/endpoint',
-      value: this.request!.url,
-    });
-    urlInput.addEventListener('input', () => {
-      this.request!.url = urlInput.value;
-      this.scheduleSave();
-    });
+    // URL input with overlay-based variable highlighting + hover tooltips
+    this.createHighlightedUrlInput(this.topBar);
 
     // Send button
     const sendBtn = this.topBar.createEl('button', {
@@ -375,6 +366,98 @@ export class RequestView extends TextFileView {
     });
 
     return textarea;
+  }
+
+  /**
+   * Single-line variant for the URL field. Renders a highlighted overlay
+   * over a transparent input — variables get the same color and hover
+   * tooltip behavior as the body editor.
+   */
+  private createHighlightedUrlInput(parent: HTMLElement): void {
+    const wrap = parent.createDiv({ cls: 'ivk-url-wrap' });
+    const highlight = wrap.createDiv({ cls: 'ivk-url-highlight' });
+    highlight.innerHTML = this.highlightInline(this.request!.url);
+
+    const input = wrap.createEl('input', {
+      cls: 'ivk-url-input',
+      type: 'text',
+      attr: {
+        placeholder: '{{baseUrl}}/api/endpoint',
+        spellcheck: 'false',
+      },
+    });
+    input.value = this.request!.url;
+
+    // Sync horizontal scroll between input and highlight
+    input.addEventListener('scroll', () => {
+      highlight.scrollLeft = input.scrollLeft;
+    });
+
+    input.addEventListener('input', () => {
+      this.request!.url = input.value;
+      highlight.innerHTML = this.highlightInline(input.value);
+      this.scheduleSave();
+    });
+
+    // Hover detection on the input — same caretPositionFromPoint trick
+    this.attachUrlHoverDetection(input);
+  }
+
+  private highlightInline(text: string): string {
+    // Escape HTML, then color {{vars}} based on env state
+    const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return escaped.replace(/\{\{(\w+)\}\}/g, (_match, name) => {
+      const value = this.env.get(name);
+      const cls = value === undefined || value === '' ? 'ivk-hl-var ivk-hl-var-unset' : 'ivk-hl-var';
+      return `<span class="${cls}">{{${name}}}</span>`;
+    });
+  }
+
+  private attachUrlHoverDetection(input: HTMLInputElement): void {
+    let lastVar: string | null = null;
+
+    const onMove = (e: MouseEvent) => {
+      const text = input.value;
+      const offset = this.getOffsetAtPoint(input as unknown as HTMLTextAreaElement, e.clientX, e.clientY);
+      if (offset < 0) {
+        if (lastVar) this.scheduleHideHoverTooltip();
+        lastVar = null;
+        return;
+      }
+
+      const re = /\{\{(\w+)\}\}/g;
+      let match: RegExpExecArray | null;
+      let foundVar: string | null = null;
+      let matchStart = -1;
+      let matchEnd = -1;
+      while ((match = re.exec(text)) !== null) {
+        if (offset >= match.index && offset <= match.index + match[0].length) {
+          foundVar = match[1];
+          matchStart = match.index;
+          matchEnd = match.index + match[0].length;
+          break;
+        }
+      }
+
+      if (foundVar !== lastVar) {
+        if (foundVar) {
+          const midOffset = Math.floor((matchStart + matchEnd) / 2);
+          const rect = this.getRectAtOffset(input as unknown as HTMLTextAreaElement, midOffset);
+          this.showHoverTooltip(foundVar, rect);
+        } else {
+          this.scheduleHideHoverTooltip();
+        }
+        lastVar = foundVar;
+      }
+    };
+
+    const onLeave = () => {
+      lastVar = null;
+      this.scheduleHideHoverTooltip();
+    };
+
+    input.addEventListener('mousemove', onMove);
+    input.addEventListener('mouseleave', onLeave);
   }
 
   private hoverTooltip: HTMLElement | null = null;
