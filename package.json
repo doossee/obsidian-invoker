@@ -1,7 +1,7 @@
 {
   "name": "obsidian-invoker",
   "version": "0.1.0",
-  "description": "A Bruno-like API client for Obsidian. Create, run, and document HTTP requests with the .ivk file format.",
+  "description": "A Bruno-like API client for Obsidian — create, run, and document HTTP requests with the .ivk file format.",
   "main": "main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs",
