@@ -1,0 +1,357 @@
+// src/views/request-view.ts
+
+import { TextFileView, WorkspaceLeaf } from 'obsidian';
+import { IVK_VIEW_TYPE, IvkRequest } from '../types';
+import { parseIvk, serializeIvk } from '../parser/ivk-parser';
+import { RequestRunner, RunResult } from '../runner/request-runner';
+import { EnvManager } from '../env/env-manager';
+
+export class RequestView extends TextFileView {
+  private request: IvkRequest | null = null;
+  private runner: RequestRunner;
+  private env: EnvManager;
+  private lastResult: RunResult | null = null;
+
+  // DOM elements
+  private topBar: HTMLElement;
+  private tabContainer: HTMLElement;
+  private tabContent: HTMLElement;
+  private responsePanel: HTMLElement;
+  private activeTab: string = 'body';
+
+  constructor(leaf: WorkspaceLeaf, runner: RequestRunner, env: EnvManager) {
+    super(leaf);
+    this.runner = runner;
+    this.env = env;
+  }
+
+  getViewType(): string {
+    return IVK_VIEW_TYPE;
+  }
+
+  getDisplayText(): string {
+    return this.request?.directives.name ?? this.file?.basename ?? 'Invoke';
+  }
+
+  getIcon(): string {
+    return 'zap';
+  }
+
+  getViewData(): string {
+    if (!this.request) return '';
+    return serializeIvk(this.request);
+  }
+
+  setViewData(data: string, clear: boolean): void {
+    this.request = parseIvk(data);
+    if (clear) this.lastResult = null;
+    this.render();
+  }
+
+  clear(): void {
+    this.request = null;
+    this.contentEl.empty();
+  }
+
+  private render(): void {
+    const container = this.contentEl;
+    container.empty();
+    container.addClass('ivk-view');
+
+    if (!this.request) return;
+
+    this.renderTopBar(container);
+    this.renderTabs(container);
+    this.renderTabContent(container);
+    this.renderResponsePanel(container);
+  }
+
+  private renderTopBar(container: HTMLElement): void {
+    this.topBar = container.createDiv({ cls: 'ivk-top-bar' });
+
+    // Method dropdown
+    const methodSelect = this.topBar.createEl('select', { cls: 'ivk-method-select' });
+    for (const m of ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']) {
+      const opt = methodSelect.createEl('option', { text: m, value: m });
+      if (m === this.request!.method) opt.selected = true;
+    }
+    methodSelect.addEventListener('change', () => {
+      this.request!.method = methodSelect.value as any;
+      this.scheduleSave();
+    });
+
+    // URL input
+    const urlInput = this.topBar.createEl('input', {
+      cls: 'ivk-url-input',
+      type: 'text',
+      placeholder: '{{baseUrl}}/api/endpoint',
+      value: this.request!.url,
+    });
+    urlInput.addEventListener('input', () => {
+      this.request!.url = urlInput.value;
+      this.scheduleSave();
+    });
+
+    // Send button
+    const sendBtn = this.topBar.createEl('button', {
+      cls: 'ivk-send-btn',
+      text: 'Send',
+    });
+    sendBtn.addEventListener('click', () => this.executeRequest());
+  }
+
+  private renderTabs(container: HTMLElement): void {
+    this.tabContainer = container.createDiv({ cls: 'ivk-tabs' });
+    const tabs = ['Headers', 'Body', 'Auth', 'Scripts', 'Params'];
+
+    for (const tab of tabs) {
+      const tabId = tab.toLowerCase();
+      const tabEl = this.tabContainer.createDiv({
+        cls: `ivk-tab ${tabId === this.activeTab ? 'ivk-tab-active' : ''}`,
+        text: tab,
+      });
+      tabEl.addEventListener('click', () => {
+        this.activeTab = tabId;
+        this.render();
+      });
+    }
+  }
+
+  private renderTabContent(container: HTMLElement): void {
+    this.tabContent = container.createDiv({ cls: 'ivk-tab-content' });
+
+    switch (this.activeTab) {
+      case 'headers': this.renderHeadersTab(); break;
+      case 'body': this.renderBodyTab(); break;
+      case 'auth': this.renderAuthTab(); break;
+      case 'scripts': this.renderScriptsTab(); break;
+      case 'params': this.renderParamsTab(); break;
+    }
+  }
+
+  private renderHeadersTab(): void {
+    const table = this.tabContent.createDiv({ cls: 'ivk-kv-table' });
+
+    // Header rows
+    const entries = Object.entries(this.request!.headers);
+    for (const [key, value] of entries) {
+      const row = table.createDiv({ cls: 'ivk-kv-row' });
+      const keyInput = row.createEl('input', { cls: 'ivk-kv-key', value: key, placeholder: 'Header name' });
+      const valInput = row.createEl('input', { cls: 'ivk-kv-value', value, placeholder: 'Value' });
+      const delBtn = row.createEl('button', { cls: 'ivk-kv-del', text: '×' });
+
+      keyInput.addEventListener('input', () => {
+        delete this.request!.headers[key];
+        if (keyInput.value) this.request!.headers[keyInput.value] = valInput.value;
+        this.scheduleSave();
+      });
+      valInput.addEventListener('input', () => {
+        this.request!.headers[keyInput.value || key] = valInput.value;
+        this.scheduleSave();
+      });
+      delBtn.addEventListener('click', () => {
+        delete this.request!.headers[key];
+        this.scheduleSave();
+        this.render();
+      });
+    }
+
+    // Add row button
+    const addBtn = table.createEl('button', { cls: 'ivk-kv-add', text: '+ Add Header' });
+    addBtn.addEventListener('click', () => {
+      this.request!.headers[''] = '';
+      this.render();
+    });
+  }
+
+  private renderBodyTab(): void {
+    const textarea = this.tabContent.createEl('textarea', {
+      cls: 'ivk-body-editor',
+      text: this.request!.body,
+      attr: { spellcheck: 'false', placeholder: 'Request body...' },
+    });
+    textarea.addEventListener('input', () => {
+      this.request!.body = textarea.value;
+      this.scheduleSave();
+    });
+  }
+
+  private renderAuthTab(): void {
+    const authValue = this.request!.directives.auth ?? 'none';
+    const authType = authValue === 'none' ? 'none' : authValue.split(/\s+/)[0] || 'none';
+
+    const select = this.tabContent.createEl('select', { cls: 'ivk-auth-select' });
+    for (const opt of ['none', 'bearer', 'basic']) {
+      const el = select.createEl('option', { text: opt, value: opt });
+      if (opt === authType) el.selected = true;
+    }
+
+    const tokenContainer = this.tabContent.createDiv({ cls: 'ivk-auth-fields' });
+
+    if (authType === 'bearer') {
+      const token = authValue.replace('bearer ', '');
+      const input = tokenContainer.createEl('input', {
+        cls: 'ivk-auth-input',
+        placeholder: '{{sessionSecret}}',
+        value: token,
+      });
+      input.addEventListener('input', () => {
+        this.request!.directives.auth = `bearer ${input.value}`;
+        this.scheduleSave();
+      });
+    } else if (authType === 'basic') {
+      const parts = authValue.replace('basic ', '').split(/\s+/);
+      const userInput = tokenContainer.createEl('input', { placeholder: 'Username', value: parts[0] || '' });
+      const passInput = tokenContainer.createEl('input', { placeholder: 'Password', value: parts[1] || '', type: 'password' });
+      const update = () => {
+        this.request!.directives.auth = `basic ${userInput.value} ${passInput.value}`;
+        this.scheduleSave();
+      };
+      userInput.addEventListener('input', update);
+      passInput.addEventListener('input', update);
+    }
+
+    select.addEventListener('change', () => {
+      this.request!.directives.auth = select.value === 'none' ? 'none' : `${select.value} `;
+      this.render();
+      this.scheduleSave();
+    });
+  }
+
+  private renderScriptsTab(): void {
+    for (const type of ['pre', 'post', 'test'] as const) {
+      const section = this.tabContent.createDiv({ cls: 'ivk-script-section' });
+      section.createEl('label', { text: `> ${type}`, cls: 'ivk-script-label' });
+      const textarea = section.createEl('textarea', {
+        cls: 'ivk-script-editor',
+        text: this.request!.scripts[type],
+        attr: { spellcheck: 'false', placeholder: `// ${type}-request script...` },
+      });
+      textarea.addEventListener('input', () => {
+        this.request!.scripts[type] = textarea.value;
+        this.scheduleSave();
+      });
+    }
+  }
+
+  private renderParamsTab(): void {
+    const table = this.tabContent.createDiv({ cls: 'ivk-kv-table' });
+
+    for (const [key, value] of Object.entries(this.request!.directives)) {
+      if (!value) continue;
+      const row = table.createDiv({ cls: 'ivk-kv-row' });
+      row.createEl('span', { cls: 'ivk-kv-key ivk-kv-readonly', text: `@${key}` });
+      const valInput = row.createEl('input', { cls: 'ivk-kv-value', value });
+      valInput.addEventListener('input', () => {
+        this.request!.directives[key] = valInput.value;
+        this.scheduleSave();
+      });
+    }
+  }
+
+  private renderResponsePanel(container: HTMLElement): void {
+    this.responsePanel = container.createDiv({ cls: 'ivk-response-panel' });
+
+    if (!this.lastResult) {
+      this.responsePanel.createDiv({ cls: 'ivk-response-empty', text: 'Click Send to execute the request' });
+      return;
+    }
+
+    const { response, testResults, logs } = this.lastResult;
+
+    // Status bar
+    const statusBar = this.responsePanel.createDiv({ cls: 'ivk-response-status' });
+    const statusClass = response.error ? 'ivk-status-error'
+      : response.status < 300 ? 'ivk-status-ok'
+      : response.status < 400 ? 'ivk-status-redirect'
+      : 'ivk-status-error';
+
+    statusBar.createEl('span', {
+      cls: `ivk-status-badge ${statusClass}`,
+      text: response.error ? 'ERROR' : String(response.status),
+    });
+    statusBar.createEl('span', { cls: 'ivk-response-time', text: `${response.time}ms` });
+    statusBar.createEl('span', { cls: 'ivk-response-size', text: `${response.size}B` });
+
+    if (testResults.length > 0) {
+      const passed = testResults.filter(t => t.passed).length;
+      statusBar.createEl('span', {
+        cls: `ivk-test-badge ${passed === testResults.length ? 'ivk-tests-pass' : 'ivk-tests-fail'}`,
+        text: `Tests: ${passed}/${testResults.length}`,
+      });
+    }
+
+    // Response tabs
+    const responseTabs = this.responsePanel.createDiv({ cls: 'ivk-response-tabs' });
+    const responseBody = this.responsePanel.createDiv({ cls: 'ivk-response-body' });
+
+    // Body
+    const bodyTab = responseTabs.createDiv({ cls: 'ivk-tab ivk-tab-active', text: 'Body' });
+    let bodyText: string;
+    if (response.error) {
+      bodyText = response.error;
+    } else if (typeof response.body === 'object') {
+      bodyText = JSON.stringify(response.body, null, 2);
+    } else {
+      bodyText = String(response.body);
+    }
+    responseBody.createEl('pre', { cls: 'ivk-response-pre', text: bodyText });
+
+    // Console logs
+    if (logs.length > 0) {
+      const logsSection = this.responsePanel.createDiv({ cls: 'ivk-response-logs' });
+      logsSection.createEl('div', { cls: 'ivk-logs-label', text: 'Console' });
+      for (const log of logs) {
+        logsSection.createEl('div', { cls: 'ivk-log-line', text: log });
+      }
+    }
+
+    // Test results
+    if (testResults.length > 0) {
+      const testsSection = this.responsePanel.createDiv({ cls: 'ivk-response-tests' });
+      testsSection.createEl('div', { cls: 'ivk-tests-label', text: 'Tests' });
+      for (const t of testResults) {
+        const row = testsSection.createDiv({ cls: `ivk-test-row ${t.passed ? 'ivk-test-pass' : 'ivk-test-fail'}` });
+        row.createEl('span', { text: t.passed ? '✓' : '✗', cls: 'ivk-test-icon' });
+        row.createEl('span', { text: t.name, cls: 'ivk-test-name' });
+        if (t.error) row.createEl('span', { text: t.error, cls: 'ivk-test-error' });
+      }
+    }
+  }
+
+  private async executeRequest(): Promise<void> {
+    if (!this.request) return;
+
+    const sendBtn = this.topBar.querySelector('.ivk-send-btn') as HTMLElement;
+    sendBtn.textContent = '...';
+    sendBtn.addClass('ivk-sending');
+
+    try {
+      this.lastResult = await this.runner.run(this.request);
+    } catch (e) {
+      this.lastResult = {
+        response: { status: 0, headers: {}, body: null, time: 0, size: 0, error: (e as Error).message },
+        testResults: [],
+        logs: [],
+      };
+    }
+
+    sendBtn.textContent = 'Send';
+    sendBtn.removeClass('ivk-sending');
+    this.render();
+  }
+
+  private scheduleSave(): void {
+    this.scheduleSaveDebounced();
+  }
+
+  private saveTimeout: number | null = null;
+  private scheduleSaveDebounced(): void {
+    if (this.saveTimeout) clearTimeout(this.saveTimeout);
+    this.saveTimeout = window.setTimeout(() => {
+      if (this.request && this.file) {
+        this.save();
+      }
+    }, 500);
+  }
+}
