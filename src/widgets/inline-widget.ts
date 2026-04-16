@@ -111,7 +111,7 @@ async function loadAndRender(
       }
     }
     if (request.body) {
-      preview.createEl('pre', { cls: 'ivk-widget-body-preview', text: request.body.substring(0, 300) });
+      preview.createEl('pre', { cls: 'ivk-widget-body-preview', text: request.body });
     }
   }
 

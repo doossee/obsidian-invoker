@@ -345,12 +345,15 @@
 
 .ivk-widget-body-preview {
   background: var(--background-primary);
-  padding: 8px;
+  padding: 10px 12px;
   border-radius: 4px;
   margin-top: 4px;
-  font-size: 11px;
-  max-height: 100px;
-  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.6;
+  max-height: 300px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .ivk-widget-response { display: none; }
@@ -361,12 +364,14 @@
 
 .ivk-widget-response-body {
   font-family: var(--font-monospace);
-  font-size: 11px;
-  padding: 8px 12px;
+  font-size: 12px;
+  line-height: 1.6;
+  padding: 10px 12px;
   margin: 0;
-  max-height: 200px;
+  max-height: 400px;
   overflow-y: auto;
   white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .ivk-widget-status {
