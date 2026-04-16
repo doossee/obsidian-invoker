@@ -102,7 +102,7 @@ export class RequestView extends TextFileView {
 
   private renderTabs(container: HTMLElement): void {
     this.tabContainer = container.createDiv({ cls: 'ivk-tabs' });
-    const tabs = ['Headers', 'Body', 'Auth', 'Scripts', 'Params'];
+    const tabs = ['Headers', 'Body', 'Auth', 'Scripts', 'Vars', 'Params'];
 
     for (const tab of tabs) {
       const tabId = tab.toLowerCase();
@@ -110,6 +110,22 @@ export class RequestView extends TextFileView {
         cls: `ivk-tab ${tabId === this.activeTab ? 'ivk-tab-active' : ''}`,
         text: tab,
       });
+
+      // Show count badge for Vars tab
+      if (tabId === 'vars') {
+        const usedVars = this.extractUsedVariables();
+        if (usedVars.length > 0) {
+          const unsetCount = usedVars.filter((v) => !this.env.get(v)).length;
+          const badge = tabEl.createEl('span', {
+            cls: `ivk-tab-badge ${unsetCount > 0 ? 'ivk-tab-badge-warn' : ''}`,
+            text: unsetCount > 0 ? `${unsetCount}` : `${usedVars.length}`,
+          });
+          badge.title = unsetCount > 0
+            ? `${unsetCount} of ${usedVars.length} variables not set`
+            : `${usedVars.length} variables`;
+        }
+      }
+
       tabEl.addEventListener('click', () => {
         this.activeTab = tabId;
         this.render();
@@ -133,9 +149,102 @@ export class RequestView extends TextFileView {
       case 'scripts':
         this.renderScriptsTab();
         break;
+      case 'vars':
+        this.renderVarsTab();
+        break;
       case 'params':
         this.renderParamsTab();
         break;
+    }
+  }
+
+  private extractUsedVariables(): string[] {
+    if (!this.request) return [];
+    const found = new Set<string>();
+    const addAll = (s: string) => {
+      const matches = s.match(/\{\{(\w+)\}\}/g);
+      if (matches) matches.forEach((m) => found.add(m.slice(2, -2)));
+    };
+    addAll(this.request.url);
+    addAll(this.request.body);
+    for (const v of Object.values(this.request.headers)) addAll(v);
+    for (const v of Object.values(this.request.directives)) {
+      if (v) addAll(v);
+    }
+    return Array.from(found);
+  }
+
+  private renderVarsTab(): void {
+    const vars = this.extractUsedVariables();
+
+    if (vars.length === 0) {
+      this.tabContent.createDiv({
+        cls: 'ivk-vars-empty',
+        text: 'No {{variables}} used in this request.',
+      });
+      return;
+    }
+
+    const header = this.tabContent.createDiv({ cls: 'ivk-vars-header' });
+    const unsetCount = vars.filter((v) => !this.env.get(v)).length;
+    header.createEl('div', {
+      cls: 'ivk-vars-summary',
+      text: `${vars.length} variable${vars.length !== 1 ? 's' : ''} used in this request${
+        unsetCount > 0 ? ` — ${unsetCount} not set` : ' — all resolved'
+      }`,
+    });
+    const activeEnv = this.env.getActiveEnv();
+    if (activeEnv) {
+      header.createEl('div', {
+        cls: 'ivk-vars-env',
+        text: `Active environment: ${activeEnv.name}`,
+      });
+    }
+
+    const table = this.tabContent.createDiv({ cls: 'ivk-vars-table' });
+
+    for (const name of vars) {
+      const row = table.createDiv({ cls: 'ivk-vars-row' });
+      const value = this.env.get(name) ?? '';
+      const isUnset = value === '';
+      if (isUnset) row.addClass('ivk-vars-row-unset');
+
+      // Variable name (yellow / red if unset)
+      row.createEl('span', { cls: 'ivk-vars-name', text: `{{${name}}}` });
+
+      // Value input
+      const input = row.createEl('input', {
+        cls: 'ivk-vars-input',
+        type: 'text',
+        value,
+        attr: { placeholder: 'set value', spellcheck: 'false' },
+      });
+
+      // Status badge
+      const status = row.createEl('span', {
+        cls: `ivk-vars-status ${isUnset ? 'ivk-vars-status-unset' : 'ivk-vars-status-set'}`,
+        text: isUnset ? 'not set' : 'set',
+      });
+
+      const updateStatus = () => {
+        const newValue = input.value;
+        if (newValue === '') {
+          status.textContent = 'not set';
+          status.removeClass('ivk-vars-status-set');
+          status.addClass('ivk-vars-status-unset');
+          row.addClass('ivk-vars-row-unset');
+        } else {
+          status.textContent = 'set';
+          status.removeClass('ivk-vars-status-unset');
+          status.addClass('ivk-vars-status-set');
+          row.removeClass('ivk-vars-row-unset');
+        }
+      };
+
+      input.addEventListener('input', () => {
+        this.env.set(name, input.value);
+        updateStatus();
+      });
     }
   }
 
