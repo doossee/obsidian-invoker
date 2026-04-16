@@ -109,9 +109,10 @@ export class RequestView extends TextFileView {
             cls: `ivk-tab-badge ${unsetCount > 0 ? 'ivk-tab-badge-warn' : ''}`,
             text: unsetCount > 0 ? `${unsetCount}` : `${usedVars.length}`,
           });
-          badge.title = unsetCount > 0
-            ? `${unsetCount} of ${usedVars.length} variables not set`
-            : `${usedVars.length} variables`;
+          badge.title =
+            unsetCount > 0
+              ? `${unsetCount} of ${usedVars.length} variables not set`
+              : `${usedVars.length} variables`;
         }
       }
 
@@ -406,7 +407,8 @@ export class RequestView extends TextFileView {
     const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     return escaped.replace(/\{\{(\w+)\}\}/g, (_match, name) => {
       const value = this.env.get(name);
-      const cls = value === undefined || value === '' ? 'ivk-hl-var ivk-hl-var-unset' : 'ivk-hl-var';
+      const cls =
+        value === undefined || value === '' ? 'ivk-hl-var ivk-hl-var-unset' : 'ivk-hl-var';
       return `<span class="${cls}">{{${name}}}</span>`;
     });
   }
@@ -416,7 +418,11 @@ export class RequestView extends TextFileView {
 
     const onMove = (e: MouseEvent) => {
       const text = input.value;
-      const offset = this.getOffsetAtPoint(input as unknown as HTMLTextAreaElement, e.clientX, e.clientY);
+      const offset = this.getOffsetAtPoint(
+        input as unknown as HTMLTextAreaElement,
+        e.clientX,
+        e.clientY,
+      );
       if (offset < 0) {
         if (lastVar) this.scheduleHideHoverTooltip();
         lastVar = null;
@@ -521,7 +527,10 @@ export class RequestView extends TextFileView {
   private getOffsetAtPoint(textarea: HTMLTextAreaElement, x: number, y: number): number {
     // Use the modern caretPositionFromPoint API (Firefox) or caretRangeFromPoint (Chromium/Safari)
     type DocWithCaret = Document & {
-      caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node; offset: number } | null;
+      caretPositionFromPoint?: (
+        x: number,
+        y: number,
+      ) => { offsetNode: Node; offset: number } | null;
     };
     const doc = document as DocWithCaret;
 
@@ -542,10 +551,24 @@ export class RequestView extends TextFileView {
     const mirror = document.body.createDiv({ cls: 'ivk-mirror' });
     const computed = window.getComputedStyle(textarea);
     const propsToCopy = [
-      'fontFamily', 'fontSize', 'fontWeight', 'lineHeight', 'letterSpacing',
-      'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
-      'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
-      'whiteSpace', 'wordWrap', 'wordBreak', 'tabSize', 'boxSizing',
+      'fontFamily',
+      'fontSize',
+      'fontWeight',
+      'lineHeight',
+      'letterSpacing',
+      'paddingTop',
+      'paddingRight',
+      'paddingBottom',
+      'paddingLeft',
+      'borderTopWidth',
+      'borderRightWidth',
+      'borderBottomWidth',
+      'borderLeftWidth',
+      'whiteSpace',
+      'wordWrap',
+      'wordBreak',
+      'tabSize',
+      'boxSizing',
     ];
     for (const prop of propsToCopy) {
       (mirror.style as unknown as Record<string, string>)[prop] = computed.getPropertyValue(
@@ -619,7 +642,8 @@ export class RequestView extends TextFileView {
         cls: 'ivk-var-tooltip-copy',
         attr: { title: 'Copy value' },
       });
-      copyBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+      copyBtn.innerHTML =
+        '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
       copyBtn.addEventListener('click', async (e) => {
         e.stopPropagation();
         try {
@@ -716,7 +740,8 @@ export class RequestView extends TextFileView {
     if (t.type === 'var') {
       const name = t.value.slice(2, -2);
       const value = this.env.get(name);
-      const cls = value === undefined || value === '' ? 'ivk-hl-var ivk-hl-var-unset' : 'ivk-hl-var';
+      const cls =
+        value === undefined || value === '' ? 'ivk-hl-var ivk-hl-var-unset' : 'ivk-hl-var';
       return `<span class="${cls}">${escaped}</span>`;
     }
     return `<span class="ivk-hl-${t.type}">${escaped}</span>`;
@@ -725,8 +750,26 @@ export class RequestView extends TextFileView {
   private tokenizeJs(code: string): Array<{ type: string; value: string }> {
     const tokens: Array<{ type: string; value: string }> = [];
     const KEYWORDS = new Set([
-      'const', 'let', 'var', 'function', 'return', 'if', 'else', 'for', 'while',
-      'await', 'async', 'new', 'throw', 'try', 'catch', 'do', 'switch', 'case', 'break', 'continue',
+      'const',
+      'let',
+      'var',
+      'function',
+      'return',
+      'if',
+      'else',
+      'for',
+      'while',
+      'await',
+      'async',
+      'new',
+      'throw',
+      'try',
+      'catch',
+      'do',
+      'switch',
+      'case',
+      'break',
+      'continue',
     ]);
     const APIS = new Set(['ivk', 'res', 'expect', 'test']);
     const BOOLS = new Set(['true', 'false', 'null', 'undefined']);
@@ -764,8 +807,14 @@ export class RequestView extends TextFileView {
         const quote = ch;
         let j = i + 1;
         while (j < code.length) {
-          if (code[j] === '\\') { j += 2; continue; }
-          if (code[j] === quote) { j++; break; }
+          if (code[j] === '\\') {
+            j += 2;
+            continue;
+          }
+          if (code[j] === quote) {
+            j++;
+            break;
+          }
           j++;
         }
         tokens.push({ type: 'str', value: code.slice(i, j) });
@@ -817,8 +866,14 @@ export class RequestView extends TextFileView {
       if (ch === '"') {
         let j = i + 1;
         while (j < code.length) {
-          if (code[j] === '\\') { j += 2; continue; }
-          if (code[j] === '"') { j++; break; }
+          if (code[j] === '\\') {
+            j += 2;
+            continue;
+          }
+          if (code[j] === '"') {
+            j++;
+            break;
+          }
           j++;
         }
         // Skip whitespace after the closing quote
