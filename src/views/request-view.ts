@@ -2,9 +2,7 @@
 
 import { TextFileView, WorkspaceLeaf } from 'obsidian';
 import { IVK_VIEW_TYPE, IvkRequest } from '../types';
-import { parseIvk, serializeIvk } from '../parser/ivk-parser';
-import { RequestRunner, RunResult } from '../runner/request-runner';
-import { EnvManager } from '../env/env-manager';
+import { parseIvk, serializeIvk, RequestRunner, RunResult, EnvManager } from 'ivkjs';
 
 export class RequestView extends TextFileView {
   private request: IvkRequest | null = null;

@@ -1,9 +1,7 @@
 // src/widgets/inline-widget.ts
 
 import { MarkdownPostProcessorContext, TFile, App } from 'obsidian';
-import { parseIvk } from '../parser/ivk-parser';
-import { RequestRunner, RunResult } from '../runner/request-runner';
-import { EnvManager } from '../env/env-manager';
+import { parseIvk, RequestRunner, RunResult, EnvManager } from 'ivkjs';
 
 export function registerInlineWidget(app: App, runner: RequestRunner, env: EnvManager) {
   return (source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) => {
