@@ -545,108 +545,159 @@
   word-break: break-word;
 }
 
-/* ── Variable tokens (inline in body/header preview) ── */
+/* ── Variable tokens (Bruno-style: muted color, subtle hover) ── */
 .ivk-var-token {
   font-family: var(--font-monospace);
-  color: #fbbf24;
-  font-weight: 600;
+  color: #a78bfa; /* soft purple — set */
   cursor: pointer;
-  border-radius: 3px;
-  padding: 0 2px;
+  border-radius: 2px;
   transition: background 0.1s;
 }
 
 .ivk-var-token:hover {
-  background: rgba(251, 191, 36, 0.15);
+  background: rgba(167, 139, 250, 0.15);
 }
 
 .ivk-var-token.ivk-var-unset {
-  color: #ef4444;
-  background: rgba(239, 68, 68, 0.1);
+  color: #f87171; /* soft red — unset */
 }
 
 .ivk-var-token.ivk-var-unset:hover {
-  background: rgba(239, 68, 68, 0.2);
+  background: rgba(248, 113, 113, 0.15);
 }
 
-/* ── Variable tooltip ── */
+/* ── Variable tooltip (Bruno-style: minimal, single-line value) ── */
 .ivk-var-tooltip {
   background: var(--background-primary);
   border: 1px solid var(--background-modifier-border);
   border-radius: 6px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
-  min-width: 240px;
-  max-width: 360px;
-  padding: 10px 12px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+  min-width: 220px;
+  max-width: 380px;
+  padding: 8px 10px;
   font-family: var(--font-interface);
   font-size: 12px;
 }
 
+/* Header row: variable name + small badge */
 .ivk-var-tooltip-header {
-  font-family: var(--font-monospace);
-  font-size: 11px;
-  color: #fbbf24;
-  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   margin-bottom: 6px;
 }
 
-.ivk-var-tooltip-name::before {
-  content: '{{';
-}
-.ivk-var-tooltip-name::after {
-  content: '}}';
-}
-
-.ivk-var-tooltip-value {
-  padding: 4px 8px;
-  border-radius: 3px;
-  background: var(--background-secondary);
-  margin-bottom: 8px;
+.ivk-var-tooltip-name {
   font-family: var(--font-monospace);
   font-size: 11px;
-  word-break: break-all;
-  max-height: 80px;
-  overflow-y: auto;
+  color: var(--text-muted);
+  font-weight: 500;
 }
 
-.ivk-var-tooltip-set {
-  color: #86efac;
+.ivk-var-tooltip-badge {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 3px;
 }
 
-.ivk-var-tooltip-unset {
-  color: #ef4444;
-  font-style: italic;
+.ivk-var-badge-env {
+  background: rgba(167, 139, 250, 0.15);
+  color: #a78bfa;
 }
 
-.ivk-var-tooltip-edit {
+.ivk-var-badge-unset {
+  background: rgba(248, 113, 113, 0.15);
+  color: #f87171;
+}
+
+/* Value row: text + copy button OR input + save button */
+.ivk-var-tooltip-value-row {
   display: flex;
+  align-items: center;
   gap: 6px;
 }
 
+.ivk-var-tooltip-value {
+  flex: 1;
+  font-family: var(--font-monospace);
+  font-size: 12px;
+  color: var(--text-normal);
+  padding: 5px 8px;
+  background: var(--background-secondary);
+  border-radius: 4px;
+  cursor: text;
+  word-break: break-all;
+  max-height: 80px;
+  overflow-y: auto;
+  min-height: 22px;
+}
+
+.ivk-var-tooltip-value:hover {
+  background: var(--background-modifier-hover);
+}
+
+.ivk-var-tooltip-empty-hint {
+  color: var(--text-muted);
+  font-style: italic;
+  font-size: 11px;
+}
+
+.ivk-var-tooltip-copy {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  background: transparent;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  color: var(--text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.1s;
+}
+
+.ivk-var-tooltip-copy:hover {
+  color: var(--text-normal);
+  border-color: var(--background-modifier-border-hover);
+  background: var(--background-secondary);
+}
+
+.ivk-var-tooltip-copy.ivk-var-tooltip-copied {
+  color: #22c55e;
+  border-color: #22c55e;
+}
+
+/* Edit mode: input + save button */
 .ivk-var-tooltip-input {
   flex: 1;
   font-family: var(--font-monospace);
-  font-size: 11px;
-  padding: 4px 8px;
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 3px;
+  font-size: 12px;
+  padding: 5px 8px;
+  border: 1px solid var(--interactive-accent);
+  border-radius: 4px;
   background: var(--background-primary);
   color: var(--text-normal);
 }
 
 .ivk-var-tooltip-input:focus {
-  outline: 1px solid var(--interactive-accent);
+  outline: none;
 }
 
 .ivk-var-tooltip-save {
-  padding: 4px 12px;
-  border-radius: 3px;
+  padding: 5px 12px;
+  border-radius: 4px;
   border: none;
   background: var(--interactive-accent);
   color: var(--text-on-accent);
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
+  flex-shrink: 0;
 }
 
 .ivk-var-tooltip-save:hover {
@@ -833,12 +884,11 @@
   color: #c4b5fd;
 }
 .ivk-hl-var {
-  color: #fbbf24;
-  font-weight: 600;
+  color: #a78bfa;
 }
 .ivk-hl-var-unset {
-  color: #ef4444;
-  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.1);
   border-radius: 2px;
 }
 .ivk-hl-comment {

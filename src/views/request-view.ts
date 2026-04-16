@@ -504,49 +504,55 @@ export class RequestView extends TextFileView {
       this.hoverHideTimer = null;
     }
     if (this.hoverTooltip && this.hoverTooltipVar === varName) {
-      // Reposition only
       this.hoverTooltip.style.left = `${rect.left}px`;
-      this.hoverTooltip.style.top = `${rect.bottom + 4}px`;
+      this.hoverTooltip.style.top = `${rect.bottom + 6}px`;
       return;
     }
     this.hideHoverTooltip();
 
     const tooltip = document.body.createDiv({ cls: 'ivk-var-tooltip' });
     const value = this.env.get(varName);
+    const isSet = value !== undefined && value !== '';
 
     const header = tooltip.createDiv({ cls: 'ivk-var-tooltip-header' });
     header.createEl('span', { cls: 'ivk-var-tooltip-name', text: varName });
+    header.createEl('span', {
+      cls: `ivk-var-tooltip-badge ${isSet ? 'ivk-var-badge-env' : 'ivk-var-badge-unset'}`,
+      text: isSet ? 'Environment' : 'Not Found',
+    });
 
-    const valueRow = tooltip.createDiv({ cls: 'ivk-var-tooltip-value' });
-    if (value === undefined || value === '') {
-      valueRow.createEl('span', { cls: 'ivk-var-tooltip-unset', text: 'not set' });
-    } else {
-      valueRow.createEl('span', { cls: 'ivk-var-tooltip-set', text: value });
+    const valueRow = tooltip.createDiv({ cls: 'ivk-var-tooltip-value-row' });
+    const valueDisplay = valueRow.createEl('div', {
+      cls: 'ivk-var-tooltip-value',
+      text: isSet ? value! : '',
+    });
+    if (!isSet) {
+      valueDisplay.createEl('span', {
+        cls: 'ivk-var-tooltip-empty-hint',
+        text: 'click to set',
+      });
     }
 
-    const editRow = tooltip.createDiv({ cls: 'ivk-var-tooltip-edit' });
-    const input = editRow.createEl('input', {
-      cls: 'ivk-var-tooltip-input',
-      type: 'text',
-      value: value ?? '',
-      attr: { placeholder: 'set value', spellcheck: 'false' },
-    });
-    const saveBtn = editRow.createEl('button', { cls: 'ivk-var-tooltip-save', text: 'Save' });
+    if (isSet) {
+      const copyBtn = valueRow.createEl('button', {
+        cls: 'ivk-var-tooltip-copy',
+        attr: { title: 'Copy value' },
+      });
+      copyBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+      copyBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        try {
+          await navigator.clipboard.writeText(value!);
+          copyBtn.addClass('ivk-var-tooltip-copied');
+          window.setTimeout(() => copyBtn.removeClass('ivk-var-tooltip-copied'), 800);
+        } catch {
+          // Clipboard not available
+        }
+      });
+    }
 
-    const save = () => {
-      this.env.set(varName, input.value);
-      this.hideHoverTooltip();
-      this.render(); // Re-render to update highlight colors
-    };
-    saveBtn.addEventListener('click', save);
-    input.addEventListener('keydown', (e: KeyboardEvent) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        save();
-      } else if (e.key === 'Escape') {
-        e.preventDefault();
-        this.hideHoverTooltip();
-      }
+    valueDisplay.addEventListener('click', () => {
+      this.enterTooltipEditMode(tooltip, varName, value ?? '');
     });
 
     tooltip.addEventListener('mouseenter', () => {
@@ -559,11 +565,45 @@ export class RequestView extends TextFileView {
 
     tooltip.style.position = 'fixed';
     tooltip.style.left = `${rect.left}px`;
-    tooltip.style.top = `${rect.bottom + 4}px`;
+    tooltip.style.top = `${rect.bottom + 6}px`;
     tooltip.style.zIndex = '1000';
 
     this.hoverTooltip = tooltip;
     this.hoverTooltipVar = varName;
+  }
+
+  private enterTooltipEditMode(tooltip: HTMLElement, varName: string, currentValue: string): void {
+    const valueRow = tooltip.querySelector('.ivk-var-tooltip-value-row') as HTMLElement;
+    if (!valueRow) return;
+    valueRow.empty();
+
+    const input = valueRow.createEl('input', {
+      cls: 'ivk-var-tooltip-input',
+      type: 'text',
+      value: currentValue,
+      attr: { placeholder: 'set value', spellcheck: 'false' },
+    });
+    const saveBtn = valueRow.createEl('button', { cls: 'ivk-var-tooltip-save', text: 'Save' });
+
+    const save = () => {
+      this.env.set(varName, input.value);
+      this.hideHoverTooltip();
+      this.render();
+    };
+    saveBtn.addEventListener('click', save);
+    input.addEventListener('keydown', (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        save();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        this.hideHoverTooltip();
+      }
+    });
+    setTimeout(() => {
+      input.focus();
+      input.select();
+    }, 0);
   }
 
   private scheduleHideHoverTooltip(): void {

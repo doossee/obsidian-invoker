@@ -139,8 +139,8 @@ async function loadAndRender(
 
 /**
  * Renders text into the parent element, splitting on {{variable}} occurrences.
- * Each variable becomes a hoverable/clickable span — hover shows the current
- * value (or "not set" in red), click opens an inline edit input.
+ * Each variable becomes a hoverable/clickable span styled like Bruno —
+ * subtle muted color when set, red when unset, with a minimal tooltip.
  */
 function renderTextWithVars(parent: HTMLElement, text: string, env: EnvManager): void {
   const re = /\{\{(\w+)\}\}/g;
@@ -166,8 +166,9 @@ function renderTextWithVars(parent: HTMLElement, text: string, env: EnvManager):
 }
 
 /**
- * Attaches Bruno-style hover tooltip + click-to-edit to a variable span.
- * Sets `ivk-var-unset` class if the variable has no value (red highlight).
+ * Bruno-style minimal tooltip: just the variable name (small label) +
+ * value (or "Not Found"), with an "Environment" or "Not Found" badge,
+ * and a copy button when the value exists.
  */
 function attachVariableTooltip(span: HTMLElement, varName: string, env: EnvManager): void {
   const refresh = () => {
@@ -192,7 +193,7 @@ function attachVariableTooltip(span: HTMLElement, varName: string, env: EnvManag
 
   const scheduleHide = () => {
     if (hideTimer) window.clearTimeout(hideTimer);
-    hideTimer = window.setTimeout(removeTooltip, 200);
+    hideTimer = window.setTimeout(removeTooltip, 250);
   };
 
   const cancelHide = () => {
@@ -207,61 +208,125 @@ function attachVariableTooltip(span: HTMLElement, varName: string, env: EnvManag
     if (tooltip) return;
     tooltip = document.body.createDiv({ cls: 'ivk-var-tooltip' });
     const value = env.get(varName);
+    const isSet = value !== undefined && value !== '';
 
+    // Header: variable name (small) + badge (Environment / Not Found)
     const header = tooltip.createDiv({ cls: 'ivk-var-tooltip-header' });
     header.createEl('span', { cls: 'ivk-var-tooltip-name', text: varName });
+    header.createEl('span', {
+      cls: `ivk-var-tooltip-badge ${isSet ? 'ivk-var-badge-env' : 'ivk-var-badge-unset'}`,
+      text: isSet ? 'Environment' : 'Not Found',
+    });
 
-    const valueRow = tooltip.createDiv({ cls: 'ivk-var-tooltip-value' });
-    if (value === undefined || value === '') {
-      valueRow.createEl('span', { cls: 'ivk-var-tooltip-unset', text: 'not set' });
-    } else {
-      valueRow.createEl('span', { cls: 'ivk-var-tooltip-set', text: value });
+    // Value display (single row, inline editable on click) + copy button
+    const valueRow = tooltip.createDiv({ cls: 'ivk-var-tooltip-value-row' });
+
+    const valueDisplay = valueRow.createEl('div', {
+      cls: 'ivk-var-tooltip-value',
+      text: isSet ? value! : '',
+    });
+    if (!isSet) {
+      valueDisplay.createEl('span', {
+        cls: 'ivk-var-tooltip-empty-hint',
+        text: 'click to set',
+      });
     }
 
-    const editRow = tooltip.createDiv({ cls: 'ivk-var-tooltip-edit' });
-    const input = editRow.createEl('input', {
-      cls: 'ivk-var-tooltip-input',
-      type: 'text',
-      value: value ?? '',
-      attr: { placeholder: 'set value', spellcheck: 'false' },
-    });
-    const saveBtn = editRow.createEl('button', {
-      cls: 'ivk-var-tooltip-save',
-      text: 'Save',
-    });
+    if (isSet) {
+      const copyBtn = valueRow.createEl('button', {
+        cls: 'ivk-var-tooltip-copy',
+        attr: { title: 'Copy value' },
+      });
+      copyBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+      copyBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        try {
+          await navigator.clipboard.writeText(value!);
+          copyBtn.addClass('ivk-var-tooltip-copied');
+          window.setTimeout(() => copyBtn.removeClass('ivk-var-tooltip-copied'), 800);
+        } catch {
+          // Clipboard not available
+        }
+      });
+    }
 
-    const save = () => {
-      env.set(varName, input.value);
-      refresh();
-      removeTooltip();
-    };
-
-    saveBtn.addEventListener('click', save);
-    input.addEventListener('keydown', (e: KeyboardEvent) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        save();
-      } else if (e.key === 'Escape') {
-        e.preventDefault();
-        removeTooltip();
-      }
+    // Click value to enter edit mode
+    valueDisplay.addEventListener('click', () => {
+      enterEditMode(tooltip!, varName, env, value ?? '', refresh, removeTooltip);
     });
 
     tooltip.addEventListener('mouseenter', cancelHide);
     tooltip.addEventListener('mouseleave', scheduleHide);
 
-    // Position the tooltip near the span
-    const rect = span.getBoundingClientRect();
-    tooltip.style.position = 'fixed';
-    tooltip.style.left = `${rect.left}px`;
-    tooltip.style.top = `${rect.bottom + 4}px`;
-    tooltip.style.zIndex = '1000';
-
-    setTimeout(() => input.focus(), 0);
+    positionTooltip(tooltip, span);
   };
 
   span.addEventListener('mouseenter', showTooltip);
   span.addEventListener('mouseleave', scheduleHide);
+}
+
+function enterEditMode(
+  tooltip: HTMLElement,
+  varName: string,
+  env: EnvManager,
+  currentValue: string,
+  refresh: () => void,
+  removeTooltip: () => void,
+): void {
+  // Replace the value row with an inline input
+  const valueRow = tooltip.querySelector('.ivk-var-tooltip-value-row') as HTMLElement;
+  if (!valueRow) return;
+  valueRow.empty();
+
+  const input = valueRow.createEl('input', {
+    cls: 'ivk-var-tooltip-input',
+    type: 'text',
+    value: currentValue,
+    attr: { placeholder: 'set value', spellcheck: 'false' },
+  });
+  const saveBtn = valueRow.createEl('button', {
+    cls: 'ivk-var-tooltip-save',
+    text: 'Save',
+  });
+
+  const save = () => {
+    env.set(varName, input.value);
+    refresh();
+    removeTooltip();
+  };
+  saveBtn.addEventListener('click', save);
+  input.addEventListener('keydown', (e: KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      save();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      removeTooltip();
+    }
+  });
+  setTimeout(() => {
+    input.focus();
+    input.select();
+  }, 0);
+}
+
+function positionTooltip(tooltip: HTMLElement, anchor: HTMLElement): void {
+  const rect = anchor.getBoundingClientRect();
+  tooltip.style.position = 'fixed';
+  tooltip.style.left = `${rect.left}px`;
+  tooltip.style.top = `${rect.bottom + 6}px`;
+  tooltip.style.zIndex = '1000';
+
+  // Adjust if it would overflow viewport
+  setTimeout(() => {
+    const tipRect = tooltip.getBoundingClientRect();
+    if (tipRect.right > window.innerWidth - 8) {
+      tooltip.style.left = `${window.innerWidth - tipRect.width - 8}px`;
+    }
+    if (tipRect.bottom > window.innerHeight - 8) {
+      tooltip.style.top = `${rect.top - tipRect.height - 6}px`;
+    }
+  }, 0);
 }
 
 function renderWidgetResponse(container: HTMLElement, result: RunResult): void {
