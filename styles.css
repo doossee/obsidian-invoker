@@ -435,6 +435,114 @@
   word-break: break-word;
 }
 
+/* ── Variable tokens (inline in body/header preview) ── */
+.ivk-var-token {
+  font-family: var(--font-monospace);
+  color: #fbbf24;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 3px;
+  padding: 0 2px;
+  transition: background 0.1s;
+}
+
+.ivk-var-token:hover {
+  background: rgba(251, 191, 36, 0.15);
+}
+
+.ivk-var-token.ivk-var-unset {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.ivk-var-token.ivk-var-unset:hover {
+  background: rgba(239, 68, 68, 0.2);
+}
+
+/* ── Variable tooltip ── */
+.ivk-var-tooltip {
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  min-width: 240px;
+  max-width: 360px;
+  padding: 10px 12px;
+  font-family: var(--font-interface);
+  font-size: 12px;
+}
+
+.ivk-var-tooltip-header {
+  font-family: var(--font-monospace);
+  font-size: 11px;
+  color: #fbbf24;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.ivk-var-tooltip-name::before {
+  content: '{{';
+}
+.ivk-var-tooltip-name::after {
+  content: '}}';
+}
+
+.ivk-var-tooltip-value {
+  padding: 4px 8px;
+  border-radius: 3px;
+  background: var(--background-secondary);
+  margin-bottom: 8px;
+  font-family: var(--font-monospace);
+  font-size: 11px;
+  word-break: break-all;
+  max-height: 80px;
+  overflow-y: auto;
+}
+
+.ivk-var-tooltip-set {
+  color: #86efac;
+}
+
+.ivk-var-tooltip-unset {
+  color: #ef4444;
+  font-style: italic;
+}
+
+.ivk-var-tooltip-edit {
+  display: flex;
+  gap: 6px;
+}
+
+.ivk-var-tooltip-input {
+  flex: 1;
+  font-family: var(--font-monospace);
+  font-size: 11px;
+  padding: 4px 8px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 3px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+}
+
+.ivk-var-tooltip-input:focus {
+  outline: 1px solid var(--interactive-accent);
+}
+
+.ivk-var-tooltip-save {
+  padding: 4px 12px;
+  border-radius: 3px;
+  border: none;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ivk-var-tooltip-save:hover {
+  opacity: 0.9;
+}
+
 .ivk-widget-response {
   display: none;
 }
@@ -617,6 +725,11 @@
 .ivk-hl-var {
   color: #fbbf24;
   font-weight: 600;
+}
+.ivk-hl-var-unset {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.12);
+  border-radius: 2px;
 }
 .ivk-hl-comment {
   color: #6b7280;

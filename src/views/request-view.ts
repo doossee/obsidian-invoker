@@ -267,8 +267,12 @@ export class RequestView extends TextFileView {
     // Escape HTML first
     let escaped = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-    // Highlight {{variables}} in all languages
-    escaped = escaped.replace(/(\{\{[\w]+\}\})/g, '<span class="ivk-hl-var">$1</span>');
+    // Highlight {{variables}} — red if unset, yellow if set
+    escaped = escaped.replace(/\{\{(\w+)\}\}/g, (_match, name) => {
+      const value = this.env.get(name);
+      const cls = value === undefined || value === '' ? 'ivk-hl-var ivk-hl-var-unset' : 'ivk-hl-var';
+      return `<span class="${cls}">{{${name}}}</span>`;
+    });
 
     if (language === 'json') {
       // JSON keys
