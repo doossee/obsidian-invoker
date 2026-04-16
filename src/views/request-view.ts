@@ -165,7 +165,8 @@ export class RequestView extends TextFileView {
   }
 
   private renderBodyTab(): void {
-    const textarea = this.tabContent.createEl('textarea', {
+    const wrapper = this.tabContent.createDiv({ cls: 'ivk-body-wrapper' });
+    const textarea = wrapper.createEl('textarea', {
       cls: 'ivk-body-editor',
       text: this.request!.body,
       attr: { spellcheck: 'false', placeholder: 'Request body...' },
@@ -173,7 +174,102 @@ export class RequestView extends TextFileView {
     textarea.addEventListener('input', () => {
       this.request!.body = textarea.value;
       this.scheduleSave();
+      this.hideAutocomplete();
     });
+
+    // Tab indentation
+    textarea.addEventListener('keydown', (e: KeyboardEvent) => {
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        textarea.value = textarea.value.substring(0, start) + '  ' + textarea.value.substring(end);
+        textarea.selectionStart = textarea.selectionEnd = start + 2;
+        this.request!.body = textarea.value;
+        this.scheduleSave();
+      }
+    });
+
+    // Variable autocomplete on {{
+    textarea.addEventListener('keyup', (e: KeyboardEvent) => {
+      this.handleAutocomplete(textarea, wrapper);
+    });
+
+    // Format JSON button
+    const toolbar = this.tabContent.createDiv({ cls: 'ivk-body-toolbar' });
+    const formatBtn = toolbar.createEl('button', { cls: 'ivk-format-btn', text: 'Format JSON' });
+    formatBtn.addEventListener('click', () => {
+      try {
+        const formatted = JSON.stringify(JSON.parse(textarea.value), null, 2);
+        textarea.value = formatted;
+        this.request!.body = formatted;
+        this.scheduleSave();
+      } catch {
+        // Not valid JSON — ignore
+      }
+    });
+  }
+
+  private autocompleteEl: HTMLElement | null = null;
+
+  private handleAutocomplete(textarea: HTMLTextAreaElement, wrapper: HTMLElement): void {
+    const cursorPos = textarea.selectionStart;
+    const textBefore = textarea.value.substring(0, cursorPos);
+
+    // Check if we're inside {{ ... (no closing }})
+    const lastOpen = textBefore.lastIndexOf('{{');
+    const lastClose = textBefore.lastIndexOf('}}');
+
+    if (lastOpen > lastClose) {
+      const query = textBefore.substring(lastOpen + 2).toLowerCase();
+      const allVars = this.env.getAllVariables();
+      const matches = Object.keys(allVars).filter(k => k.toLowerCase().startsWith(query));
+
+      if (matches.length > 0) {
+        this.showAutocomplete(textarea, wrapper, matches, query, cursorPos);
+        return;
+      }
+    }
+
+    this.hideAutocomplete();
+  }
+
+  private showAutocomplete(
+    textarea: HTMLTextAreaElement,
+    wrapper: HTMLElement,
+    matches: string[],
+    query: string,
+    cursorPos: number,
+  ): void {
+    this.hideAutocomplete();
+
+    const dropdown = wrapper.createDiv({ cls: 'ivk-autocomplete' });
+    this.autocompleteEl = dropdown;
+
+    for (const varName of matches.slice(0, 8)) {
+      const value = this.env.get(varName) ?? '';
+      const item = dropdown.createDiv({ cls: 'ivk-autocomplete-item' });
+      item.createEl('span', { cls: 'ivk-ac-name', text: `{{${varName}}}` });
+      item.createEl('span', { cls: 'ivk-ac-value', text: value.length > 30 ? value.substring(0, 30) + '...' : value });
+
+      item.addEventListener('click', () => {
+        const before = textarea.value.substring(0, cursorPos - query.length);
+        const after = textarea.value.substring(cursorPos);
+        textarea.value = before + varName + '}}' + after;
+        textarea.selectionStart = textarea.selectionEnd = before.length + varName.length + 2;
+        textarea.focus();
+        this.request!.body = textarea.value;
+        this.scheduleSave();
+        this.hideAutocomplete();
+      });
+    }
+  }
+
+  private hideAutocomplete(): void {
+    if (this.autocompleteEl) {
+      this.autocompleteEl.remove();
+      this.autocompleteEl = null;
+    }
   }
 
   private renderAuthTab(): void {

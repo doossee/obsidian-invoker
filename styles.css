@@ -456,3 +456,69 @@
   font-family: var(--font-monospace);
   font-size: 11px;
 }
+
+/* ── Body wrapper ── */
+.ivk-body-wrapper { position: relative; flex: 1; }
+
+/* ── Body toolbar ── */
+.ivk-body-toolbar {
+  display: flex;
+  gap: 8px;
+  padding: 6px 0;
+}
+
+.ivk-format-btn {
+  font-size: 11px;
+  color: var(--text-muted);
+  background: none;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  padding: 3px 10px;
+  cursor: pointer;
+}
+
+.ivk-format-btn:hover { color: var(--text-normal); }
+
+/* ── Autocomplete ── */
+.ivk-autocomplete {
+  position: absolute;
+  top: 60px;
+  left: 16px;
+  min-width: 260px;
+  max-height: 200px;
+  overflow-y: auto;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  z-index: 100;
+}
+
+.ivk-autocomplete-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.ivk-autocomplete-item:hover {
+  background: var(--background-secondary);
+}
+
+.ivk-ac-name {
+  font-family: var(--font-monospace);
+  color: var(--text-accent);
+  font-weight: 500;
+}
+
+.ivk-ac-value {
+  color: var(--text-muted);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 120px;
+}
